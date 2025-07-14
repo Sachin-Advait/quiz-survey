@@ -18,32 +18,28 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(Customizer.withDefaults()) // ✅ Enable CORS
+        return http
+                .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
+                        .requestMatchers("/api/quiz-survey/**", "/api/admin/quiz-survey/**").permitAll()
+                        .anyRequest().authenticated()
                 )
-                .httpBasic(Customizer.withDefaults());
-
-        return http.build();
+                .build();
     }
 
-    // ✅ CORS config bean with production URL
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Include both local development and production URLs
         config.setAllowedOrigins(List.of(
-                "http://localhost:3000",           // Local development
-                "https://quiz-survey.onrender.com" // Production URL
+                "http://localhost:5173",
+                "https://quiz-survey.onrender.com"
         ));
-
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true); // Often needed for production
-        config.setMaxAge(3600L); // Cache preflight response
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
