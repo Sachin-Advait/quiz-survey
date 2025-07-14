@@ -29,14 +29,21 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ CORS config bean
+    // ✅ CORS config bean with production URL
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:3000")); // or use "*" temporarily
+
+        // Include both local development and production URLs
+        config.setAllowedOrigins(List.of(
+                "http://localhost:3000",           // Local development
+                "https://quiz-survey.onrender.com" // Production URL
+        ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(false); // set true if using cookies or auth headers
+        config.setAllowCredentials(true); // Often needed for production
+        config.setMaxAge(3600L); // Cache preflight response
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
