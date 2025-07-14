@@ -21,9 +21,15 @@ public class QuizSurveyController {
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> getQuizSurvey(@PathVariable String id) {
         QuizSurveyModel quizSurvey = service.getQuizSurvey(id);
+        if (quizSurvey == null) {
+            return ResponseEntity.status(404).body(
+                    new ApiResponseDTO<>(false, "Quiz & survey not found", null)
+            );
+        }
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz & survey retrieved successfully", quizSurvey));
     }
+
 
     @GetMapping
     public ResponseEntity<ApiResponseDTO<List<QuizSurveyModel>>> getQuizzesSurveys() {
