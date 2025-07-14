@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -23,6 +24,14 @@ public class QuizSurveyService {
     public QuizSurveyModel getQuizSurvey(String id) {
         return quizSurveyRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
+    }
+
+    public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
+        return quizSurveyRepo.save(model);
+    }
+
+    public List<QuizSurveyModel> getQuizzesSurveys() {
+        return quizSurveyRepo.findAll();
     }
 
     @Transactional
@@ -53,4 +62,23 @@ public class QuizSurveyService {
                 .maxScore(max)
                 .build());
     }
+
+    public QuizSurveyModel updateQuizSurvey(QuizSurveyModel model) {
+        QuizSurveyModel existing = quizSurveyRepo.findById(model.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Quiz/Survey not found"));
+
+        if (model.getTitle() != null) existing.setTitle(model.getTitle());
+        if (model.getType() != null) existing.setType(model.getType());
+        if (model.getDefinitionJson() != null) existing.setDefinitionJson(model.getDefinitionJson());
+        if (model.getAnswerKey() != null) existing.setAnswerKey(model.getAnswerKey());
+        if (model.getMaxScore() != null) existing.setMaxScore(model.getMaxScore());
+
+        return quizSurveyRepo.save(existing);
+    }
+
+
+    public void deleteQuizSurvey(String id) {
+        quizSurveyRepo.deleteById(id);
+    }
+
 }
