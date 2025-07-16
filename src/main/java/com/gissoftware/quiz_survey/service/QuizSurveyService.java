@@ -39,6 +39,8 @@ public class QuizSurveyService {
         if (model.getDefinitionJson() != null) existing.setDefinitionJson(model.getDefinitionJson());
         if (model.getAnswerKey() != null) existing.setAnswerKey(model.getAnswerKey());
         if (model.getMaxScore() != null) existing.setMaxScore(model.getMaxScore());
+        if (model.getStatus() != null) existing.setStatus(model.getStatus());
+        if (model.getQuizTotalDuration() != null) existing.setQuizTotalDuration(model.getQuizTotalDuration());
 
         return quizSurveyRepo.save(existing);
     }

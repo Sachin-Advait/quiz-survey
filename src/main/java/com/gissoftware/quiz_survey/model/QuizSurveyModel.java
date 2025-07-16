@@ -24,7 +24,7 @@ public class QuizSurveyModel {
     private SurveyDefinition definitionJson;
     private Map<String, Object> answerKey; // Map of questionId -> correctAnswer
     private Integer maxScore;
-    private boolean status;
+    private Boolean status;
     private String quizTotalDuration;
     @Builder.Default
     private Instant createdAt = Instant.now();
