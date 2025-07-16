@@ -19,7 +19,6 @@ public class Announcement {
     private String id;
     private String title;
     private String message;
-    private boolean read;
 
     @Builder.Default
     private Instant createdAt = Instant.now();

@@ -28,6 +28,8 @@ public class ResponseService {
 
     @Transactional
     public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionDTO request) {
+        userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
 
         // Fetch quiz/survey
         QuizSurveyModel qs = quizSurveyRepo.findById(quizSurveyId)
@@ -101,13 +103,17 @@ public class ResponseService {
         return responseRepo.findByUserId(userId);
     }
 
-    public List<ResponseModel> getResponsesByQuizSurveyId(String quizSurveyId) {
-        return responseRepo.findByQuizSurveyId(quizSurveyId);
+    public ResponseModel getResponseByUserAndQuiz(String quizSurveyId, String userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+
+        return responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("Response not found for this user and quiz."));
     }
 
-    public ResponseModel getResponseById(String id) {
-        return responseRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Response not found with id: " + id));
+
+    public List<ResponseModel> getResponsesByQuizSurveyId(String quizSurveyId) {
+        return responseRepo.findByQuizSurveyId(quizSurveyId);
     }
 
     public List<SurveyResultDTO> getSurveyResults(String quizSurveyId) {
@@ -115,18 +121,23 @@ public class ResponseService {
         QuizSurveyModel survey = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
 
-        // Extract questions and choices from definitionJson
-        SurveyDefinition definition = survey.getDefinitionJson(); // assuming definitionJson is already deserialized
+        // Extract survey definition
+        SurveyDefinition definition = survey.getDefinitionJson();
         Map<String, Map<String, Integer>> counts = new HashMap<>();
+        Map<String, List<Integer>> ratingResponses = new HashMap<>();
 
+        // Initialize counts
         for (SurveyDefinition.Page page : definition.getPages()) {
             for (SurveyDefinition.Element element : page.getElements()) {
+                String key = element.getName();
                 if (element.getChoices() != null) {
                     Map<String, Integer> choiceCounts = new HashMap<>();
                     for (String choice : element.getChoices()) {
-                        choiceCounts.put(choice, 0); // initialize with 0
+                        choiceCounts.put(choice, 0);
                     }
-                    counts.put(element.getName(), choiceCounts);
+                    counts.put(key, choiceCounts);
+                } else if ("rating".equalsIgnoreCase(element.getType())) {
+                    ratingResponses.put(key, new ArrayList<>());
                 }
             }
         }
@@ -136,40 +147,55 @@ public class ResponseService {
         if (responses.isEmpty()) {
             throw new IllegalArgumentException("No responses found for this survey.");
         }
-
         int totalResponses = responses.size();
 
         // Aggregate answers
         for (ResponseModel response : responses) {
             Map<String, Object> answers = response.getAnswers();
             for (Map.Entry<String, Object> entry : answers.entrySet()) {
-                String questionKey = entry.getKey(); // like "q1"
-                String answer = String.valueOf(entry.getValue());
+                String key = entry.getKey();
+                Object value = entry.getValue();
 
-                Map<String, Integer> optionCounts = counts.get(questionKey);
-                if (optionCounts != null && optionCounts.containsKey(answer)) {
-                    optionCounts.put(answer, optionCounts.get(answer) + 1);
+                if (counts.containsKey(key)) {
+                    if (value instanceof List<?> list) {
+                        for (Object val : list) {
+                            String choice = String.valueOf(val);
+                            counts.get(key).computeIfPresent(choice, (k, v) -> v + 1);
+                        }
+                    } else {
+                        String choice = String.valueOf(value);
+                        counts.get(key).computeIfPresent(choice, (k, v) -> v + 1);
+                    }
+                } else if (ratingResponses.containsKey(key) && value instanceof Integer rating) {
+                    ratingResponses.get(key).add(rating);
                 }
             }
         }
 
-        // Build result list
+        // Build final result
         List<SurveyResultDTO> results = new ArrayList<>();
         for (SurveyDefinition.Page page : definition.getPages()) {
             for (SurveyDefinition.Element element : page.getElements()) {
-                if (element.getChoices() != null) {
-                    String questionTitle = element.getTitle(); // e.g., "What is AI?"
-                    String questionKey = element.getName();    // e.g., "q1"
-                    Map<String, Integer> countMap = counts.getOrDefault(questionKey, new HashMap<>());
-                    Map<String, Integer> percentageMap = new HashMap<>();
+                String key = element.getName();
+                String title = element.getTitle();
 
-                    for (String choice : element.getChoices()) {
+                if (counts.containsKey(key)) {
+                    Map<String, Integer> countMap = counts.get(key);
+                    Map<String, Object> percentageMap = new HashMap<>();
+                    for (String choice : countMap.keySet()) {
                         int count = countMap.getOrDefault(choice, 0);
                         int percentage = (int) Math.round((count * 100.0) / totalResponses);
                         percentageMap.put(choice, percentage);
                     }
+                    results.add(new SurveyResultDTO(title, "choice", percentageMap));
+                } else if (ratingResponses.containsKey(key)) {
+                    List<Integer> ratings = ratingResponses.get(key);
+                    double average = ratings.stream().mapToInt(i -> i).average().orElse(0.0);
+                    Map<String, Object> ratingResult = new HashMap<>();
+                    ratingResult.put("averageRating", average);
+                    ratingResult.put("responseCount", ratings.size());
 
-                    results.add(new SurveyResultDTO(questionTitle, percentageMap));
+                    results.add(new SurveyResultDTO(title, "rating", ratingResult));
                 }
             }
         }

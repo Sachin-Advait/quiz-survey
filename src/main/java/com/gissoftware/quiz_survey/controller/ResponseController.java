@@ -1,9 +1,6 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
-import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
-import com.gissoftware.quiz_survey.dto.SurveyResultDTO;
-import com.gissoftware.quiz_survey.dto.SurveySubmissionDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.service.ResponseService;
 import lombok.AllArgsConstructor;
@@ -43,14 +40,19 @@ public class ResponseController {
         return ResponseEntity.ok(responseService.getResponsesByUserId(userId));
     }
 
-    @GetMapping("/by-quiz/{quizSurveyId}")
-    public ResponseEntity<List<ResponseModel>> getByQuiz(@PathVariable String quizSurveyId) {
-        return ResponseEntity.ok(responseService.getResponsesByQuizSurveyId(quizSurveyId));
+    @PostMapping("/by-user/quiz")
+    public ResponseEntity<ResponseModel> getResponseByUserAndQuiz(@RequestBody QuizResponseRequest request) {
+        ResponseModel response = responseService.getResponseByUserAndQuiz(
+                request.getQuizSurveyId(),
+                request.getUserId()
+        );
+
+        return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ResponseModel> getById(@PathVariable String id) {
-        return ResponseEntity.ok(responseService.getResponseById(id));
+    @GetMapping("admin/by-quiz/{quizSurveyId}")
+    public ResponseEntity<List<ResponseModel>> getByQuiz(@PathVariable String quizSurveyId) {
+        return ResponseEntity.ok(responseService.getResponsesByQuizSurveyId(quizSurveyId));
     }
 
     @GetMapping("/survey-results/{quizSurveyId}")
