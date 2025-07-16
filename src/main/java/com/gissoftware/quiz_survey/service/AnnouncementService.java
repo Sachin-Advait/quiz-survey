@@ -7,6 +7,7 @@ import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.repository.AnnouncementReadRepository;
 import com.gissoftware.quiz_survey.repository.AnnouncementRepository;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
+import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +21,7 @@ public class AnnouncementService {
     private final AnnouncementRepository announcementRepo;
     private final AnnouncementReadRepository readRepo;
     private final QuizSurveyRepository quizSurveyRepository;
+    private final UserRepository userRepository;
 
     public Announcement create(String quizSurveyId, String message) {
 
@@ -62,4 +64,19 @@ public class AnnouncementService {
         readRepo.save(read);
     }
 
+    public void markAllAsRead(String userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid username"));
+
+        List<Announcement> announcements = announcementRepo.findAll();
+        Set<String> allIds = announcements.stream()
+                .map(Announcement::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        AnnouncementRead read = readRepo.findById(userId)
+                .orElse(AnnouncementRead.builder().userId(userId).build());
+
+        read.getAnnouncementIds().addAll(allIds);
+        readRepo.save(read);
+    }
 }

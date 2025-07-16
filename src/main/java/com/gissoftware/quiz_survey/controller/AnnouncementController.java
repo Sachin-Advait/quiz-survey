@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -41,4 +42,12 @@ public class AnnouncementController {
         announcementService.markAsRead(req.getUserId(), req.getAnnouncementId());
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Marked as read", null));
     }
+
+    @PatchMapping("/announcements/mark-all-read")
+    public ResponseEntity<ApiResponseDTO<String>> markAllAsRead(@RequestBody Map<String, String> req) {
+        String userId = req.get("userId");
+        announcementService.markAllAsRead(userId);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "All announcements marked as read", null));
+    }
+
 }
