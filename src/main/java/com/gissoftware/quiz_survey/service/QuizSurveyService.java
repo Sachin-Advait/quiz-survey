@@ -24,6 +24,7 @@ public class QuizSurveyService {
         return quizSurveyRepo.save(model);
     }
 
+    // Get All Quizzes and Surveys
     public List<QuizSurveyModel> getQuizzesSurveys() {
         return quizSurveyRepo.findAll();
     }
@@ -39,6 +40,7 @@ public class QuizSurveyService {
         if (model.getMaxScore() != null) existing.setMaxScore(model.getMaxScore());
         if (model.getStatus() != null) existing.setStatus(model.getStatus());
         if (model.getQuizTotalDuration() != null) existing.setQuizTotalDuration(model.getQuizTotalDuration());
+        if (model.getIsAnnounced() != null) existing.setIsAnnounced(model.getIsAnnounced());
 
         return quizSurveyRepo.save(existing);
     }

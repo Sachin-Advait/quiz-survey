@@ -26,6 +26,7 @@ public class QuizSurveyModel {
     private Integer maxScore;
     private Boolean status;
     private String quizTotalDuration;
+    private Boolean isAnnounced;
     @Builder.Default
     private Instant createdAt = Instant.now();
 }

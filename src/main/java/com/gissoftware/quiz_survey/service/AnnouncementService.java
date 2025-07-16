@@ -26,6 +26,10 @@ public class AnnouncementService {
         QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId).orElseThrow(()
                 -> new RuntimeException("Invalid quiz survey Id"));
 
+        // ✅ Update isAnnounced to true
+        quizSurveyModel.setIsAnnounced(true);
+        quizSurveyRepository.save(quizSurveyModel);
+
         return announcementRepo.save(Announcement.builder()
                 .title(quizSurveyModel.getTitle())
                 .message(message)
