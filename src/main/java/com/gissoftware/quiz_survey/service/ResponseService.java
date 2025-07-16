@@ -29,7 +29,7 @@ public class ResponseService {
     @Transactional
     public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionDTO request) {
         userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> new RuntimeException("Invalid username"));
 
         // Fetch quiz/survey
         QuizSurveyModel qs = quizSurveyRepo.findById(quizSurveyId)
@@ -125,18 +125,29 @@ public class ResponseService {
         SurveyDefinition definition = survey.getDefinitionJson();
         Map<String, Map<String, Integer>> counts = new HashMap<>();
         Map<String, List<Integer>> ratingResponses = new HashMap<>();
+        Map<String, Map<String, Integer>> rankingScores = new HashMap<>();
+        Map<String, Integer> rankingRespondentCounts = new HashMap<>();
 
-        // Initialize counts
+        // Initialize maps
         for (SurveyDefinition.Page page : definition.getPages()) {
             for (SurveyDefinition.Element element : page.getElements()) {
                 String key = element.getName();
-                if (element.getChoices() != null) {
+                String type = element.getType().toLowerCase();
+
+                if ("ranking".equals(type) && element.getChoices() != null) {
+                    Map<String, Integer> scoreMap = new HashMap<>();
+                    for (String choice : element.getChoices()) {
+                        scoreMap.put(choice, 0);
+                    }
+                    rankingScores.put(key, scoreMap);
+                    rankingRespondentCounts.put(key, 0);
+                } else if (element.getChoices() != null) {
                     Map<String, Integer> choiceCounts = new HashMap<>();
                     for (String choice : element.getChoices()) {
                         choiceCounts.put(choice, 0);
                     }
                     counts.put(key, choiceCounts);
-                } else if ("rating".equalsIgnoreCase(element.getType())) {
+                } else if ("rating".equals(type)) {
                     ratingResponses.put(key, new ArrayList<>());
                 }
             }
@@ -166,8 +177,23 @@ public class ResponseService {
                         String choice = String.valueOf(value);
                         counts.get(key).computeIfPresent(choice, (k, v) -> v + 1);
                     }
-                } else if (ratingResponses.containsKey(key) && value instanceof Integer rating) {
-                    ratingResponses.get(key).add(rating);
+                } else if (ratingResponses.containsKey(key)) {
+                    try {
+                        int rating = (int) Double.parseDouble(value.toString());
+                        ratingResponses.get(key).add(rating);
+                    } catch (Exception e) {
+                        // Optional: log or ignore
+                    }
+
+                } else if (rankingScores.containsKey(key) && value instanceof List<?> rankingList) {
+                    int rank = 1;
+                    for (Object item : rankingList) {
+                        String choice = String.valueOf(item);
+                        int finalRank = rank;
+                        rankingScores.get(key).computeIfPresent(choice, (k, v) -> v + finalRank);
+                        rank++;
+                    }
+                    rankingRespondentCounts.put(key, rankingRespondentCounts.getOrDefault(key, 0) + 1);
                 }
             }
         }
@@ -178,6 +204,7 @@ public class ResponseService {
             for (SurveyDefinition.Element element : page.getElements()) {
                 String key = element.getName();
                 String title = element.getTitle();
+                String type = element.getType().toLowerCase();
 
                 if (counts.containsKey(key)) {
                     Map<String, Integer> countMap = counts.get(key);
@@ -196,11 +223,23 @@ public class ResponseService {
                     ratingResult.put("responseCount", ratings.size());
 
                     results.add(new SurveyResultDTO(title, "rating", ratingResult));
+                } else if (rankingScores.containsKey(key)) {
+                    Map<String, Integer> scoreMap = rankingScores.get(key);
+                    int respondentCount = rankingRespondentCounts.getOrDefault(key, 1);
+
+                    Map<String, Object> avgRankMap = new HashMap<>();
+                    for (Map.Entry<String, Integer> entry : scoreMap.entrySet()) {
+                        double avgRank = (double) entry.getValue() / respondentCount;
+                        avgRankMap.put(entry.getKey(), avgRank);
+                    }
+
+                    results.add(new SurveyResultDTO(title, "ranking", avgRankMap));
                 }
             }
         }
 
         return results;
     }
+
 
 }
