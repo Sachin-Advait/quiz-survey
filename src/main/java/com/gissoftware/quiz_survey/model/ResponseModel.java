@@ -19,7 +19,7 @@ public class ResponseModel {
     @Id
     private String id;
     private String quizSurveyId;
-    private String participantId;
+    private String userId;
     private Map<String, Object> answers;
     private Integer score; // null for survey
     private Integer maxScore; // null for survey

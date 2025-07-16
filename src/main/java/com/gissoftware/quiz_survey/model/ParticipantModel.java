@@ -18,7 +18,7 @@ public class ParticipantModel {
     @Id
     private String id;
     private String quizSurveyId;
-    private String externalUserId;
+    private String userId;
     @Builder.Default
     private Instant startedAt = Instant.now();
     private Instant completedAt;

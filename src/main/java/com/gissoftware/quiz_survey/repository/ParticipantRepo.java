@@ -6,5 +6,5 @@ import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.Optional;
 
 public interface ParticipantRepo extends MongoRepository<ParticipantModel, String> {
-    Optional<ParticipantModel> findByQuizSurveyIdAndExternalUserId(String quizSurveyId, String externalUserId);
+    Optional<ParticipantModel> findByQuizSurveyIdAndUserId(String quizSurveyId, String userId);
 }

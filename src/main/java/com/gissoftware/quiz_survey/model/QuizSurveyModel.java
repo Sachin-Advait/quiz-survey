@@ -21,9 +21,11 @@ public class QuizSurveyModel {
     private String id;
     private String type;
     private String title;
-    private Map<String, Object> definitionJson; // SurveyJS-compatible JSON definition of the quiz or survey
+    private SurveyDefinition definitionJson;
     private Map<String, Object> answerKey; // Map of questionId -> correctAnswer
     private Integer maxScore;
+    private boolean status;
+    private String quizTotalDuration;
     @Builder.Default
     private Instant createdAt = Instant.now();
 }
