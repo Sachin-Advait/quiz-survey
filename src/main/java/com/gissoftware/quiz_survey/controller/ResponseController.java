@@ -36,23 +36,31 @@ public class ResponseController {
     }
 
     @GetMapping("/by-user/{userId}")
-    public ResponseEntity<List<ResponseModel>> getByUser(@PathVariable String userId) {
-        return ResponseEntity.ok(responseService.getResponsesByUserId(userId));
+    public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getByUser(@PathVariable String userId) {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true,
+                        "Response submitted successfully", responseService.getResponsesByUserId(userId))
+        );
     }
 
     @PostMapping("/by-user/quiz")
-    public ResponseEntity<ResponseModel> getResponseByUserAndQuiz(@RequestBody QuizResponseRequest request) {
+    public ResponseEntity<ApiResponseDTO<ResponseModel>> getResponseByUserAndQuiz(@RequestBody QuizResponseRequest request) {
         ResponseModel response = responseService.getResponseByUserAndQuiz(
                 request.getQuizSurveyId(),
                 request.getUserId()
         );
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Response submitted successfully", response));
+
     }
 
     @GetMapping("admin/by-quiz/{quizSurveyId}")
-    public ResponseEntity<List<ResponseModel>> getByQuiz(@PathVariable String quizSurveyId) {
-        return ResponseEntity.ok(responseService.getResponsesByQuizSurveyId(quizSurveyId));
+    public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getByQuiz(@PathVariable String quizSurveyId) {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Response submitted successfully",
+                        responseService.getResponsesByQuizSurveyId(quizSurveyId))
+        );
     }
 
     @GetMapping("/survey-results/{quizSurveyId}")
