@@ -24,10 +24,11 @@ public class ResponseController {
             @PathVariable String id,
             @RequestBody SurveySubmissionDTO request
     ) {
-        ResponseModel response = responseService.storeResponse(id, request.getUserId(), request.getAnswers());
+        ResponseModel response = responseService.storeResponse(id, request);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Response submitted successfully", response));
     }
+
 
     @GetMapping("/summary/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizScoreSummaryDTO>> getSummary(@PathVariable String quizSurveyId) {

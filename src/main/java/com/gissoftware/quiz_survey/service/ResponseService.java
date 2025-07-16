@@ -2,13 +2,13 @@ package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
 import com.gissoftware.quiz_survey.dto.SurveyResultDTO;
-import com.gissoftware.quiz_survey.model.ParticipantModel;
+import com.gissoftware.quiz_survey.dto.SurveySubmissionDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.SurveyDefinition;
-import com.gissoftware.quiz_survey.repository.ParticipantRepo;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
+import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,46 +23,49 @@ import java.util.Map;
 public class ResponseService {
 
     private final QuizSurveyRepository quizSurveyRepo;
-    private final ParticipantRepo participantRepo;
     private final ResponseRepo responseRepo;
+    private final UserRepository userRepository;
 
     @Transactional
-    public ResponseModel storeResponse(String quizSurveyId, String userId, Map<String, Object> userAnswers) {
+    public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionDTO request) {
+
+        // Fetch quiz/survey
         QuizSurveyModel qs = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
 
-        ParticipantModel participant = participantRepo
-                .findByQuizSurveyIdAndUserId(quizSurveyId, userId)
-                .orElseGet(() -> participantRepo.save(
-                        ParticipantModel.builder()
-                                .quizSurveyId(quizSurveyId)
-                                .userId(userId)
-                                .build()
-                ));
+        // ✅ Check if the user has already submitted a response
+        boolean alreadySubmitted = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId,
+                request.getUserId()).isPresent();
 
+        if (alreadySubmitted) {
+            throw new IllegalStateException("You have already submitted this quiz/survey.");
+        }
+
+        // Handle response
         return switch (qs.getType().toLowerCase()) {
-            case "quiz" -> handleQuizResponse(qs, participant, userAnswers);
-            case "survey" -> handleSurveyResponse(qs, participant, userAnswers);
+            case "survey" -> handleSurveyResponse(qs, request.getUserId(), request.getAnswers());
+            case "quiz" -> handleQuizResponse(qs, request.getUserId(), request.getAnswers());
             default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
         };
     }
 
-    private ResponseModel handleQuizResponse(QuizSurveyModel quiz, ParticipantModel participant, Map<String, Object> userAnswers) {
+
+    private ResponseModel handleQuizResponse(QuizSurveyModel quiz, String userId, Map<String, Object> userAnswers) {
         ScoringUtil.ScoringResult result = ScoringUtil.score(userAnswers, quiz.getAnswerKey());
 
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(quiz.getId())
-                .userId(participant.getId())
+                .userId(userId)
                 .answers(userAnswers)
                 .score(result.score())
                 .maxScore(result.max())
                 .build());
     }
 
-    private ResponseModel handleSurveyResponse(QuizSurveyModel survey, ParticipantModel participant, Map<String, Object> userAnswers) {
+    private ResponseModel handleSurveyResponse(QuizSurveyModel survey, String userId, Map<String, Object> userAnswers) {
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(survey.getId())
-                .userId(participant.getId())
+                .userId(userId)
                 .answers(userAnswers)
                 .score(null)
                 .maxScore(null)

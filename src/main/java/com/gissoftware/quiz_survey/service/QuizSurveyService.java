@@ -1,7 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
-import com.gissoftware.quiz_survey.repository.ParticipantRepo;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import lombok.RequiredArgsConstructor;
@@ -14,7 +13,6 @@ import java.util.List;
 public class QuizSurveyService {
 
     private final QuizSurveyRepository quizSurveyRepo;
-    private final ParticipantRepo participantRepo;
     private final ResponseRepo responseRepo;
 
     public QuizSurveyModel getQuizSurvey(String id) {
