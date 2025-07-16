@@ -33,5 +33,11 @@ public class GlobalExceptionHandler {
     public ApiResponseDTO<String> handleOtherExceptions(Exception ex) {
         return new ApiResponseDTO<>(false, "An unexpected error occurred", null);
     }
+
+    @ExceptionHandler(RuntimeException.class)
+    @ResponseStatus(HttpStatus.UNAUTHORIZED)
+    public ApiResponseDTO<String> handleRuntime(RuntimeException ex) {
+        return new ApiResponseDTO<>(false, ex.getMessage(), null);
+    }
 }
 
