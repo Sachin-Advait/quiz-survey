@@ -6,6 +6,7 @@ import com.gissoftware.quiz_survey.dto.SurveySubmissionDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.SurveyDefinition;
+import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
@@ -55,9 +56,13 @@ public class ResponseService {
     private ResponseModel handleQuizResponse(QuizSurveyModel quiz, String userId, Map<String, Object> userAnswers) {
         ScoringUtil.ScoringResult result = ScoringUtil.score(userAnswers, quiz.getAnswerKey());
 
+        UserModel user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid userId"));
+
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(quiz.getId())
                 .userId(userId)
+                .username(user.getUsername())
                 .answers(userAnswers)
                 .score(result.score())
                 .maxScore(result.max())
@@ -65,9 +70,13 @@ public class ResponseService {
     }
 
     private ResponseModel handleSurveyResponse(QuizSurveyModel survey, String userId, Map<String, Object> userAnswers) {
+        UserModel user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid userId"));
+
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(survey.getId())
                 .userId(userId)
+                .username(user.getUsername())
                 .answers(userAnswers)
                 .score(null)
                 .maxScore(null)
@@ -99,19 +108,21 @@ public class ResponseService {
         return new QuizScoreSummaryDTO(totalAttempts, avgScore, highestScore, maxScore);
     }
 
+    // Get All Responses by User ID
     public List<ResponseModel> getResponsesByUserId(String userId) {
         return responseRepo.findByUserId(userId);
     }
 
+    // Get Response by user & quiz id
     public ResponseModel getResponseByUserAndQuiz(String quizSurveyId, String userId) {
         userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+                .orElseThrow(() -> new RuntimeException("Invalid userId"));
 
         return responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Response not found for this user and quiz."));
     }
 
-
+    // Get All Responses by quiz id
     public List<ResponseModel> getResponsesByQuizSurveyId(String quizSurveyId) {
         return responseRepo.findByQuizSurveyId(quizSurveyId);
     }
@@ -240,6 +251,4 @@ public class ResponseService {
 
         return results;
     }
-
-
 }
