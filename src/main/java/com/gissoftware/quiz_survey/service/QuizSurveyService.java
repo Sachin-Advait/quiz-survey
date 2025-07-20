@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
@@ -25,8 +26,30 @@ public class QuizSurveyService {
     }
 
     // Get All Quizzes and Surveys
-    public List<QuizSurveyModel> getQuizzesSurveys() {
-        return quizSurveyRepo.findAll();
+    public List<QuizSurveyDTO> getQuizzesSurveys(String userId) {
+        List<QuizSurveyModel> quizzes = quizSurveyRepo.findAll();
+
+        return quizzes.stream().map(quiz -> {
+            QuizSurveyDTO.QuizSurveyDTOBuilder builder = QuizSurveyDTO.builder()
+                    .id(quiz.getId())
+                    .type(quiz.getType())
+                    .title(quiz.getTitle())
+                    .definitionJson(quiz.getDefinitionJson())
+                    .answerKey(quiz.getAnswerKey())
+                    .maxScore(quiz.getMaxScore())
+                    .status(quiz.getStatus())
+                    .quizTotalDuration(quiz.getQuizTotalDuration())
+                    .isAnnounced(quiz.getIsAnnounced())
+                    .createdAt(quiz.getCreatedAt());
+
+            if (userId != null) {
+                builder.isParticipated(
+                        responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent()
+                );
+            }
+
+            return builder.build();
+        }).toList();
     }
 
     public QuizSurveyModel updateQuizSurvey(QuizSurveyModel model) {
