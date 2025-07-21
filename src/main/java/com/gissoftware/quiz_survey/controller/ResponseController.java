@@ -1,9 +1,6 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
-import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
-import com.gissoftware.quiz_survey.dto.SurveyResultDTO;
-import com.gissoftware.quiz_survey.dto.SurveySubmissionDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.service.ResponseService;
 import lombok.AllArgsConstructor;
@@ -22,7 +19,7 @@ public class ResponseController {
     @PostMapping("/submit-survey/{id}")
     public ResponseEntity<ApiResponseDTO<ResponseModel>> submitResponse(
             @PathVariable String id,
-            @RequestBody SurveySubmissionDTO request
+            @RequestBody SurveySubmissionRequest request
     ) {
         ResponseModel response = responseService.storeResponse(id, request);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
@@ -39,19 +36,19 @@ public class ResponseController {
     }
 
     @GetMapping("/responses/by-user/{userId}")
-    public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getByUser(@PathVariable String userId) {
+    public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getAllResponsesByUserId(@PathVariable String userId) {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true,
-                        "Response submitted successfully", responseService.getResponsesByUserId(userId))
+                        "Response submitted successfully", responseService.getAllResponsesByUserId(userId))
         );
     }
 
     @GetMapping("/quiz-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<ResponseModel>> getResponseByUserAndQuiz(
+    public ResponseEntity<ApiResponseDTO<QuizResultDTO>> getQuizResultByUserId(
             @PathVariable String quizSurveyId,
             @RequestParam String userId
     ) {
-        ResponseModel response = responseService.getResponseByUserAndQuiz(quizSurveyId, userId);
+        QuizResultDTO response = responseService.getQuizResultByUserId(quizSurveyId, userId);
 
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Retrieved submitted response successfully", response));
@@ -59,10 +56,10 @@ public class ResponseController {
     }
 
     @GetMapping("admin/quiz-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getByQuiz(@PathVariable String quizSurveyId) {
+    public ResponseEntity<ApiResponseDTO<List<QuizResultDTO>>> getQuizResultsAdmin(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true, "Retrieved submitted responses successfully",
-                        responseService.getResponsesByQuizSurveyId(quizSurveyId))
+                        responseService.getQuizResultsAdmin(quizSurveyId))
         );
     }
 

@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +17,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EnableMongoAuditing
 public class AnnouncementRead {
     @Id
     private String userId;

@@ -6,7 +6,7 @@ import lombok.Data;
 import java.util.Map;
 
 @Data
-public class SurveySubmissionDTO {
+public class SurveySubmissionRequest {
     private String userId;
     private Map<String, Object> answers;
 }

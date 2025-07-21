@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
-
+import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import java.time.Instant;
 
 @Document(collection = "users")
@@ -15,6 +15,7 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EnableMongoAuditing
 
 public class UserModel {
     @Id

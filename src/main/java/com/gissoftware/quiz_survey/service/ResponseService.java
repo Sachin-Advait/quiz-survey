@@ -1,8 +1,9 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.dto.QuizResultDTO;
 import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
 import com.gissoftware.quiz_survey.dto.SurveyResultDTO;
-import com.gissoftware.quiz_survey.dto.SurveySubmissionDTO;
+import com.gissoftware.quiz_survey.dto.SurveySubmissionRequest;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.SurveyDefinition;
@@ -14,10 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -27,8 +25,9 @@ public class ResponseService {
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
 
+    // Store Quiz & Survey Responses
     @Transactional
-    public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionDTO request) {
+    public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
         userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
 
@@ -84,6 +83,7 @@ public class ResponseService {
     }
 
 
+    // Get Quiz Score Summary
     public QuizScoreSummaryDTO getScoreSummary(String quizSurveyId) {
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
         if (responses.isEmpty()) {
@@ -109,24 +109,99 @@ public class ResponseService {
     }
 
     // Get All Responses by User ID
-    public List<ResponseModel> getResponsesByUserId(String userId) {
+    public List<ResponseModel> getAllResponsesByUserId(String userId) {
         return responseRepo.findByUserId(userId);
     }
 
-    // Get Response by user & quiz id
-    public ResponseModel getResponseByUserAndQuiz(String quizSurveyId, String userId) {
+    // Get Quiz Result by User ID Common Function
+    private QuizResultDTO buildQuizResultDTO(ResponseModel response, QuizSurveyModel quizSurvey) {
+        SurveyDefinition definition = quizSurvey.getDefinitionJson();
+        Map<String, Object> answerKey = quizSurvey.getAnswerKey();
+        Map<String, Object> selectedAnswers = response.getAnswers();
+
+        Map<String, QuizResultDTO.QuestionAnswerDTO> formattedAnswers = new LinkedHashMap<>();
+
+        for (SurveyDefinition.Page page : definition.getPages()) {
+            for (SurveyDefinition.Element q : page.getElements()) {
+                String questionText = q.getTitle();
+                List<String> choices = q.getChoices();
+                String questionId = q.getName();
+
+                List<QuizResultDTO.OptionDTO> formattedOptions = new ArrayList<>();
+                char label = 'A';
+
+                for (String choice : choices) {
+                    String labelStr = String.valueOf(label++);
+                    boolean isCorrect = false;
+
+                    Object correct = answerKey.get(questionId);
+                    if (correct instanceof String) {
+                        isCorrect = labelStr.equalsIgnoreCase((String) correct);
+                    } else if (correct instanceof List) {
+                        isCorrect = ((List<?>) correct).contains(labelStr);
+                    }
+
+                    formattedOptions.add(QuizResultDTO.OptionDTO.builder()
+                            .text(choice)
+                            .isCorrect(isCorrect)
+                            .build());
+                }
+
+                // Extract selected options
+                Object selected = selectedAnswers.get(questionId);
+                List<String> selectedOptionLabels = new ArrayList<>();
+                if (selected instanceof String) {
+                    selectedOptionLabels.add((String) selected);
+                } else if (selected instanceof List) {
+                    selectedOptionLabels = ((List<?>) selected).stream()
+                            .map(String::valueOf)
+                            .toList();
+                }
+
+                formattedAnswers.put(questionText,
+                        QuizResultDTO.QuestionAnswerDTO.builder()
+                                .options(formattedOptions)
+                                .selectedOptions(selectedOptionLabels)
+                                .build());
+            }
+        }
+
+        return QuizResultDTO.builder()
+                .username(response.getUsername())
+                .score(response.getScore())
+                .maxScore(response.getMaxScore())
+                .submittedAt(response.getSubmittedAt())
+                .answers(formattedAnswers)
+                .build();
+    }
+
+    // Get Quiz Result by User ID
+    public QuizResultDTO getQuizResultByUserId(String quizSurveyId, String userId) {
         userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Invalid userId"));
 
-        return responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
+        ResponseModel response = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
                 .orElseThrow(() -> new IllegalArgumentException("Response not found for this user and quiz."));
+
+        QuizSurveyModel quizSurvey = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new RuntimeException("Quiz survey not found"));
+
+        return buildQuizResultDTO(response, quizSurvey);
     }
 
-    // Get All Responses by quiz id
-    public List<ResponseModel> getResponsesByQuizSurveyId(String quizSurveyId) {
-        return responseRepo.findByQuizSurveyId(quizSurveyId);
+    // Get Quiz Result Admin
+    public List<QuizResultDTO> getQuizResultsAdmin(String quizSurveyId) {
+        QuizSurveyModel quizSurvey = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new RuntimeException("Quiz survey not found"));
+
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+
+        return responses.stream()
+                .map(response -> buildQuizResultDTO(response, quizSurvey))
+                .toList();
     }
 
+    // Get Survey Result
     public List<SurveyResultDTO> getSurveyResults(String quizSurveyId) {
         // Fetch survey
         QuizSurveyModel survey = quizSurveyRepo.findById(quizSurveyId)
