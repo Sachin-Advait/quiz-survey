@@ -6,6 +6,7 @@ import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,5 +38,15 @@ public class UserController {
         UserResponseDTO response = userService.toDto(updated);
 
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "User updated successfully", response));
+    }
+
+    @DeleteMapping("{id}")
+    public ResponseEntity<?> deleteUserById(@PathVariable String id) {
+        UserModel user = userService.deleteUserById(id);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(new ApiResponseDTO<>(false, "User not found", null));
+        }
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "User deleted successfully", null));
     }
 }
