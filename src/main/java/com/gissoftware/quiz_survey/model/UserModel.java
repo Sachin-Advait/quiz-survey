@@ -15,13 +15,16 @@ import java.time.Instant;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+
 public class UserModel {
     @Id
     private String id;
 
     private String username;
     private String password;
-    private String role;
+    private UserRole role;
+    private Region region;
+    private Outlet outlet;
 
     @CreatedDate
     private Instant createdAt;

@@ -8,6 +8,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -19,7 +22,10 @@ public class UserService {
         return UserResponseDTO.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .role(UserRole.valueOf(user.getRole()))
+                .role(user.getRole())
+                .createdAt(user.getCreatedAt())
+                .region(user.getRegion())
+                .outlet(user.getOutlet())
                 .build();
     }
 
@@ -29,13 +35,11 @@ public class UserService {
                     throw new RuntimeException("Username already exists");
                 });
 
-        System.out.println(user);
-
         user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         // Set default role if not provided
-        if (user.getRole() == null || user.getRole().isBlank()) {
-            user.setRole(String.valueOf(UserRole.USER));
+        if (user.getRole() == null) {
+            user.setRole(UserRole.USER);
         }
 
         return userRepository.save(user);
@@ -46,6 +50,49 @@ public class UserService {
         return userRepository.findByUsername(username)
                 .filter(user -> passwordEncoder.matches(rawPassword, user.getPassword()))
                 .orElseThrow(() -> new RuntimeException("Invalid username or password"));
+    }
+
+    public List<UserResponseDTO> getAllUsers(String region, String outlet) {
+        List<UserModel> users;
+
+        if (region != null && outlet != null) {
+            users = userRepository.findByRegionAndOutlet(region, outlet);
+        } else if (region != null) {
+            users = userRepository.findByRegion(region);
+        } else if (outlet != null) {
+            users = userRepository.findByOutlet(outlet);
+        } else {
+            users = userRepository.findAll();
+        }
+
+        return users.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+
+    public UserModel updateUser(String id, UserModel request) {
+        UserModel user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (request.getUsername() != null) {
+            user.setUsername(request.getUsername());
+        }
+
+        if (request.getRole() != null) {
+            user.setRole(request.getRole());
+        }
+
+        if (request.getRegion() != null) {
+            user.setRegion(request.getRegion());
+
+        }
+
+        if (request.getOutlet() != null) {
+            user.setOutlet(request.getOutlet());
+        }
+
+        return userRepository.save(user);
     }
 }
 

@@ -1,39 +1,41 @@
 package com.gissoftware.quiz_survey.controller;
 
+
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
-import com.gissoftware.quiz_survey.dto.LoginRequest;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/users")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserService userService;
 
-    @PostMapping("/register")
-    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> register(@RequestBody UserModel user) {
-        UserModel registeredUser = userService.register(user);
-        return ResponseEntity.ok(
-                new ApiResponseDTO<>(true, "Registration successful", userService.toDto(registeredUser))
-        );
+    @GetMapping
+    public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> getAllUsers(
+            @RequestParam(required = false) String region,
+            @RequestParam(required = false) String outlet
+    ) {
+        List<UserResponseDTO> response = userService.getAllUsers(region, outlet);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "Retrieved all users", response));
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> login(@RequestBody LoginRequest loginRequest) {
-        UserModel user = userService.login(loginRequest.getUsername(), loginRequest.getPassword());
-        return ResponseEntity.ok(
-                new ApiResponseDTO<>(true, "Login successful", userService.toDto(user))
-        );
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> updateUser(
+            @PathVariable String id,
+            @RequestBody UserModel request) {
+
+        UserModel updated = userService.updateUser(id, request);
+        UserResponseDTO response = userService.toDto(updated);
+
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "User updated successfully", response));
     }
 }
-
-
