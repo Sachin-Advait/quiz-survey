@@ -4,10 +4,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 @Document("quizsurvey")
@@ -22,11 +25,13 @@ public class QuizSurveyModel {
     private String type;
     private String title;
     private SurveyDefinition definitionJson;
-    private Map<String, Object> answerKey; // Map of questionId -> correctAnswer
+    private Map<String, Object> answerKey;
     private Integer maxScore;
     private Boolean status;
     private String quizTotalDuration;
     private Boolean isAnnounced;
     @Builder.Default
-    private Instant createdAt = Instant.now();
+    private List<String> targetedUsers = new ArrayList<>();
+    @CreatedDate
+    private Instant createdAt;
 }

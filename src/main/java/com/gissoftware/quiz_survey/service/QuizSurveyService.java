@@ -1,6 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
-import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
+import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
@@ -16,42 +16,48 @@ public class QuizSurveyService {
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
 
+    // Create Quiz & Survey
+    public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
+        return quizSurveyRepo.save(model);
+    }
+
+    // Get Quiz & Survey By ID
     public QuizSurveyModel getQuizSurvey(String id) {
         return quizSurveyRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
     }
 
-    public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
-        return quizSurveyRepo.save(model);
-    }
-
     // Get All Quizzes and Surveys
-    public List<QuizSurveyDTO> getQuizzesSurveys(String userId) {
+    public List<QuizzesSurveysDTO> getQuizzesSurveys(String userId) {
         List<QuizSurveyModel> quizzes = quizSurveyRepo.findAll();
 
         return quizzes.stream().map(quiz -> {
-            QuizSurveyDTO.QuizSurveyDTOBuilder builder = QuizSurveyDTO.builder()
+            int totalQuestions = quiz.getAnswerKey() != null ? quiz.getAnswerKey().size() : 0;
+
+            QuizzesSurveysDTO.QuizzesSurveysDTOBuilder builder = QuizzesSurveysDTO.builder()
                     .id(quiz.getId())
                     .type(quiz.getType())
                     .title(quiz.getTitle())
-                    .definitionJson(quiz.getDefinitionJson())
-                    .answerKey(quiz.getAnswerKey())
-                    .maxScore(quiz.getMaxScore())
+                    .totalQuestion(totalQuestions)
                     .status(quiz.getStatus())
                     .quizTotalDuration(quiz.getQuizTotalDuration())
                     .isAnnounced(quiz.getIsAnnounced())
                     .createdAt(quiz.getCreatedAt());
 
             if (userId != null) {
-                builder.isParticipated(
-                        responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent()
-                );
+                boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
+                boolean isMandatory = quiz.getTargetedUsers() != null && !quiz.getTargetedUsers().isEmpty() &&
+                        quiz.getTargetedUsers().contains(userId);
+
+                builder.isParticipated(isParticipated);
+                builder.isMandatory(isMandatory);
             }
 
             return builder.build();
         }).toList();
     }
 
+    // Update Quiz & Survey by ID
     public QuizSurveyModel updateQuizSurvey(QuizSurveyModel model) {
         QuizSurveyModel existing = quizSurveyRepo.findById(model.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Quiz/Survey not found"));
@@ -68,9 +74,8 @@ public class QuizSurveyService {
         return quizSurveyRepo.save(existing);
     }
 
-
+    // Delete Quiz & Survey by ID
     public void deleteQuizSurvey(String id) {
         quizSurveyRepo.deleteById(id);
     }
-
 }

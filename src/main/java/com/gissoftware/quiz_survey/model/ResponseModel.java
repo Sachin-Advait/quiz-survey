@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -24,6 +25,7 @@ public class ResponseModel {
     private Map<String, Object> answers;
     private Integer score; // null for survey
     private Integer maxScore; // null for survey
-    @Builder.Default
-    private Instant submittedAt = Instant.now();
+
+    @CreatedDate
+    private Instant submittedAt;
 }
