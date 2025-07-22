@@ -146,17 +146,15 @@ public class ResponseService {
                 String questionId = q.getName();
 
                 List<QuizResultDTO.OptionDTO> formattedOptions = new ArrayList<>();
-                char label = 'A';
 
                 for (String choice : choices) {
-                    String labelStr = String.valueOf(label++);
                     boolean isCorrect = false;
 
                     Object correct = answerKey.get(questionId);
                     if (correct instanceof String) {
-                        isCorrect = labelStr.equalsIgnoreCase((String) correct);
+                        isCorrect = choice.equals(correct);
                     } else if (correct instanceof List) {
-                        isCorrect = ((List<?>) correct).contains(labelStr);
+                        isCorrect = ((List<?>) correct).contains(choice);
                     }
 
                     formattedOptions.add(QuizResultDTO.OptionDTO.builder()
@@ -164,6 +162,7 @@ public class ResponseService {
                             .isCorrect(isCorrect)
                             .build());
                 }
+
 
                 // Extract selected options
                 Object selected = selectedAnswers.get(questionId);

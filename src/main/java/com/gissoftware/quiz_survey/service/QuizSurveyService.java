@@ -34,6 +34,7 @@ public class QuizSurveyService {
                 .definitionJson(quiz.getDefinitionJson())
                 .quizDuration(quiz.getQuizDuration())
                 .maxScore(quiz.getMaxScore())
+                .answerKey(quiz.getAnswerKey())
                 .createdAt(quiz.getCreatedAt())
                 .build();
     }
