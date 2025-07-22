@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
@@ -22,9 +23,19 @@ public class QuizSurveyService {
     }
 
     // Get Quiz & Survey By ID
-    public QuizSurveyModel getQuizSurvey(String id) {
-        return quizSurveyRepo.findById(id)
+    public QuizSurveyDTO getQuizSurvey(String id) {
+        QuizSurveyModel quiz = quizSurveyRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
+
+        return QuizSurveyDTO.builder()
+                .id(quiz.getId())
+                .type(quiz.getType())
+                .title(quiz.getTitle())
+                .definitionJson(quiz.getDefinitionJson())
+                .quizDuration(quiz.getQuizDuration())
+                .maxScore(quiz.getMaxScore())
+                .createdAt(quiz.getCreatedAt())
+                .build();
     }
 
     // Get All Quizzes and Surveys
