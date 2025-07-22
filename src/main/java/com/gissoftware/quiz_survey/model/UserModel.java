@@ -24,7 +24,7 @@ public class UserModel {
     private String username;
     private String password;
     private UserRole role;
-    private Region region;
+    private String region;
     private Outlet outlet;
 
     @CreatedDate

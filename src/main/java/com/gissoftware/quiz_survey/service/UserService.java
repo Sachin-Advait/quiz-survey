@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
+import com.gissoftware.quiz_survey.model.Region;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.model.UserRole;
 import com.gissoftware.quiz_survey.repository.UserRepository;
@@ -104,6 +105,13 @@ public class UserService {
             return userOpt.get();
         }
         return null;
+    }
+
+    public List<Region> getOmanRegions() {
+        return List.of(
+                new Region("DA", "AL_DAKHILIYAH"),
+                new Region("ZU", "DHOFAR")
+        );
     }
 }
 

@@ -3,6 +3,7 @@ package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
+import com.gissoftware.quiz_survey.model.Region;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -48,5 +49,12 @@ public class UserController {
                     .body(new ApiResponseDTO<>(false, "User not found", null));
         }
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "User deleted successfully", null));
+    }
+
+
+    @GetMapping("/regions")
+    public ResponseEntity<ApiResponseDTO<List<Region>>> getOmanRegions() {
+        List<Region> regions = userService.getOmanRegions();
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "Retrieved regions successfully", regions));
     }
 }
