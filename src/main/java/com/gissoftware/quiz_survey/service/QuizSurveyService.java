@@ -43,7 +43,11 @@ public class QuizSurveyService {
         List<QuizSurveyModel> quizzes = quizSurveyRepo.findAll();
 
         return quizzes.stream().map(quiz -> {
-            int totalQuestions = quiz.getAnswerKey() != null ? quiz.getAnswerKey().size() : 0;
+            int totalQuestions = quiz.getDefinitionJson().getPages() != null &&
+                    !quiz.getDefinitionJson().getPages().get(0).getElements().isEmpty()
+                    ? quiz.getDefinitionJson().getPages().get(0).getElements().size()
+                    : 0;
+
 
             QuizzesSurveysDTO.QuizzesSurveysDTOBuilder builder = QuizzesSurveysDTO.builder()
                     .id(quiz.getId())
