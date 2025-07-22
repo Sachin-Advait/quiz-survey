@@ -26,7 +26,7 @@ public class QuizSurveyController {
                 .definitionJson(model.getDefinitionJson())
                 .answerKey(model.getAnswerKey())
                 .maxScore(model.getMaxScore())
-                .quizTotalDuration(model.getQuizTotalDuration())
+                .quizDuration(model.getQuizTotalDuration())
                 .createdAt(model.getCreatedAt())
                 .build();
     }

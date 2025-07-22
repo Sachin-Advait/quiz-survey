@@ -46,8 +46,13 @@ public class QuizSurveyService {
 
             if (userId != null) {
                 boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
-                boolean isMandatory = quiz.getTargetedUsers() != null && !quiz.getTargetedUsers().isEmpty() &&
-                        quiz.getTargetedUsers().contains(userId);
+
+                // Mandatory logic:
+                boolean isMandatory = false;
+                if (!isParticipated) {
+                    isMandatory = quiz.getTargetedUsers() != null && !quiz.getTargetedUsers().isEmpty() &&
+                            quiz.getTargetedUsers().contains(userId) && quiz.getIsMandatory();
+                }
 
                 builder.isParticipated(isParticipated);
                 builder.isMandatory(isMandatory);
@@ -69,7 +74,11 @@ public class QuizSurveyService {
         if (model.getMaxScore() != null) existing.setMaxScore(model.getMaxScore());
         if (model.getStatus() != null) existing.setStatus(model.getStatus());
         if (model.getQuizTotalDuration() != null) existing.setQuizTotalDuration(model.getQuizTotalDuration());
+        if (model.getQuizDuration() != null) existing.setQuizDuration(model.getQuizDuration());
         if (model.getIsAnnounced() != null) existing.setIsAnnounced(model.getIsAnnounced());
+        if (model.getIsMandatory() != null) existing.setIsMandatory(model.getIsMandatory());
+        if (model.getTargetedUsers() != null) existing.setTargetedUsers(model.getTargetedUsers());
+
 
         return quizSurveyRepo.save(existing);
     }

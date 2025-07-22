@@ -6,8 +6,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import org.springframework.data.mongodb.core.mapping.Document;
+
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
@@ -26,6 +28,7 @@ public class ResponseModel {
     private Map<String, Object> answers;
     private Integer score; // null for survey
     private Integer maxScore; // null for survey
+    private Duration finishTime;
 
     @CreatedDate
     private Instant submittedAt;

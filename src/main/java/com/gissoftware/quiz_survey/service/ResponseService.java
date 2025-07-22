@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -45,40 +46,42 @@ public class ResponseService {
 
         // Handle response
         return switch (qs.getType().toLowerCase()) {
-            case "survey" -> handleSurveyResponse(qs, request.getUserId(), request.getAnswers());
-            case "quiz" -> handleQuizResponse(qs, request.getUserId(), request.getAnswers());
+            case "survey" -> handleSurveyResponse(qs, request);
+            case "quiz" -> handleQuizResponse(qs, request);
             default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
         };
     }
 
 
-    private ResponseModel handleQuizResponse(QuizSurveyModel quiz, String userId, Map<String, Object> userAnswers) {
-        ScoringUtil.ScoringResult result = ScoringUtil.score(userAnswers, quiz.getAnswerKey());
+    private ResponseModel handleQuizResponse(QuizSurveyModel quiz, SurveySubmissionRequest request) {
+        ScoringUtil.ScoringResult result = ScoringUtil.score(request.getAnswers(), quiz.getAnswerKey());
 
-        UserModel user = userRepository.findById(userId)
+        UserModel user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid userId"));
 
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(quiz.getId())
-                .userId(userId)
+                .userId(request.getUserId())
                 .username(user.getUsername())
-                .answers(userAnswers)
+                .answers(request.getAnswers())
                 .score(result.score())
                 .maxScore(result.max())
+                .finishTime(request.getFinishTime())
                 .build());
     }
 
-    private ResponseModel handleSurveyResponse(QuizSurveyModel survey, String userId, Map<String, Object> userAnswers) {
-        UserModel user = userRepository.findById(userId)
+    private ResponseModel handleSurveyResponse(QuizSurveyModel survey, SurveySubmissionRequest request) {
+        UserModel user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid userId"));
 
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(survey.getId())
-                .userId(userId)
+                .userId(request.getUserId())
                 .username(user.getUsername())
-                .answers(userAnswers)
+                .answers(request.getAnswers())
                 .score(null)
                 .maxScore(null)
+                .finishTime(null)
                 .build());
     }
 
@@ -105,8 +108,23 @@ public class ResponseService {
 
         double avgScore = (double) totalScore / totalAttempts;
 
-        return new QuizScoreSummaryDTO(totalAttempts, avgScore, highestScore, maxScore);
+        // Get top 3 scorers
+        List<Map<String, Object>> topScorers = responses.stream()
+                .filter(r -> r.getScore() != null)
+                .sorted((a, b) -> b.getScore().compareTo(a.getScore()))
+                .limit(3)
+                .map(r -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("username", r.getUsername()); // assuming getUsername() exists
+                    map.put("score", r.getScore());
+                    map.put("maxScore", r.getMaxScore());
+                    return map;
+                })
+                .collect(Collectors.toList());
+
+        return new QuizScoreSummaryDTO(totalAttempts, avgScore, highestScore, maxScore, topScorers);
     }
+
 
     // Get All Responses by User ID
     public List<ResponseModel> getAllResponsesByUserId(String userId) {
