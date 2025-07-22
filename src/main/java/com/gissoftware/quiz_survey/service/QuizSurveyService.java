@@ -3,8 +3,10 @@ package com.gissoftware.quiz_survey.service;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
+import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
+import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +18,7 @@ public class QuizSurveyService {
 
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
+    private final UserRepository userRepository;
 
     // Create Quiz & Survey
     public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
@@ -61,13 +64,15 @@ public class QuizSurveyService {
                     .createdAt(quiz.getCreatedAt());
 
             if (userId != null) {
+                UserModel user = userRepository.findById(userId)
+                        .orElseThrow(() -> new RuntimeException("Invalid username"));
                 boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
 
                 // Mandatory logic:
                 boolean isMandatory = false;
                 if (!isParticipated) {
                     isMandatory = quiz.getTargetedUsers() != null && !quiz.getTargetedUsers().isEmpty() &&
-                            quiz.getTargetedUsers().contains(userId) && quiz.getIsMandatory();
+                            quiz.getTargetedUsers().contains(user.getUsername()) && quiz.getIsMandatory();
                 }
 
                 builder.isParticipated(isParticipated);
