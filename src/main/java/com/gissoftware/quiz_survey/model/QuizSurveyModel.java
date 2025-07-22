@@ -9,7 +9,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,8 +30,8 @@ public class QuizSurveyModel {
     private Map<String, Object> answerKey;
     private Integer maxScore;
     private Boolean status;
-    private Duration quizTotalDuration;
-    private Duration quizDuration;
+    private String quizTotalDuration;
+    private String quizDuration;
     private Boolean isAnnounced;
     private Boolean isMandatory;
     @Builder.Default

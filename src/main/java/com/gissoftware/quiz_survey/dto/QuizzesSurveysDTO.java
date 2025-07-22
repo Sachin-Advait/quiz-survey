@@ -5,7 +5,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.Duration;
 import java.time.Instant;
 
 @Data
@@ -18,10 +17,7 @@ public class QuizzesSurveysDTO {
     private String title;
     private Integer totalQuestion;
     private Boolean status;
-
-    //    @JsonSerialize(using = ToStringSerializer.class)
-//    @JsonDeserialize(using = DurationDeserializer.class)
-    private Duration quizTotalDuration;
+    private String quizTotalDuration;
     private Boolean isAnnounced;
     private Boolean isParticipated;
     private Boolean isMandatory;
