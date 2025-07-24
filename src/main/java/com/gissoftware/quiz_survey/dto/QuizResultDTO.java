@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -25,9 +26,12 @@ public class QuizResultDTO {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     static public class QuestionAnswerDTO {
-        private List<OptionDTO> options;
-        private List<String> selectedOptions;
+        private List<OptionDTO> choices;
+        private String type;
+        private Object selectedOptions;
+        private String correctAnswer;
     }
 
     @Data

@@ -146,38 +146,54 @@ public class ResponseService {
 
                 List<QuizResultDTO.OptionDTO> formattedOptions = new ArrayList<>();
 
-                for (String choice : choices) {
-                    boolean isCorrect = false;
+                if (choices != null) {
+                    for (String choice : choices) {
+                        boolean isCorrect = false;
 
-                    Object correct = answerKey.get(questionId);
-                    if (correct instanceof String) {
-                        isCorrect = choice.equals(correct);
-                    } else if (correct instanceof List) {
-                        isCorrect = ((List<?>) correct).contains(choice);
+
+                        if (choice != null) {
+                            Object correct = answerKey.get(questionId);
+                            if (correct instanceof String) {
+                                isCorrect = choice.equals(correct);
+                            } else if (correct instanceof List) {
+                                isCorrect = ((List<?>) correct).contains(choice);
+                            }
+
+
+                            formattedOptions.add(QuizResultDTO.OptionDTO.builder()
+                                    .text(choice)
+                                    .isCorrect(isCorrect)
+                                    .build());
+
+
+                        }
                     }
 
-                    formattedOptions.add(QuizResultDTO.OptionDTO.builder()
-                            .text(choice)
-                            .isCorrect(isCorrect)
-                            .build());
                 }
-
 
                 // Extract selected options
                 Object selected = selectedAnswers.get(questionId);
-                List<String> selectedOptionLabels = new ArrayList<>();
-                if (selected instanceof String) {
-                    selectedOptionLabels.add((String) selected);
-                } else if (selected instanceof List) {
-                    selectedOptionLabels = ((List<?>) selected).stream()
-                            .map(String::valueOf)
-                            .toList();
+
+                Object selectedOptions = null;
+
+                if (selected instanceof List<?> selectedList) {
+                    if (selectedList.size() == 1) {
+                        selectedOptions = String.valueOf(selectedList.get(0));
+                    } else if (!selectedList.isEmpty()) {
+                        selectedOptions = selectedList.stream()
+                                .map(String::valueOf)
+                                .toList();
+                    }
+                } else if (selected != null) {
+                    selectedOptions = selected.toString();
                 }
 
                 formattedAnswers.put(questionText,
                         QuizResultDTO.QuestionAnswerDTO.builder()
-                                .options(formattedOptions)
-                                .selectedOptions(selectedOptionLabels)
+                                .choices(formattedOptions)
+                                .type(q.getType())
+                                .correctAnswer(Objects.equals(q.getType(), "text") ? q.getCorrectAnswer().toString() : null)
+                                .selectedOptions(selectedOptions)
                                 .build());
             }
         }
@@ -219,50 +235,39 @@ public class ResponseService {
 
     // Get Survey Result
     public List<SurveyResultDTO> getSurveyResultsAdmin(String quizSurveyId) {
-        // Fetch survey
         QuizSurveyModel survey = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
 
-        // Extract survey definition
         SurveyDefinition definition = survey.getDefinitionJson();
         Map<String, Map<String, Integer>> counts = new HashMap<>();
         Map<String, List<Integer>> ratingResponses = new HashMap<>();
-        Map<String, Map<String, Integer>> rankingScores = new HashMap<>();
-        Map<String, Integer> rankingRespondentCounts = new HashMap<>();
 
-        // Initialize maps
+        // ✅ Initialize counts and ratingResponses
         for (SurveyDefinition.Page page : definition.getPages()) {
             for (SurveyDefinition.Element element : page.getElements()) {
                 String key = element.getName();
                 String type = element.getType().toLowerCase();
 
-                if ("ranking".equals(type) && element.getChoices() != null) {
-                    Map<String, Integer> scoreMap = new HashMap<>();
-                    for (String choice : element.getChoices()) {
-                        scoreMap.put(choice, 0);
-                    }
-                    rankingScores.put(key, scoreMap);
-                    rankingRespondentCounts.put(key, 0);
-                } else if (element.getChoices() != null) {
+                if ("rating".equals(type)) {
+                    ratingResponses.put(key, new ArrayList<>());
+                } else if (List.of("radiogroup", "checkbox", "dropdown").contains(type) && element.getChoices() != null) {
                     Map<String, Integer> choiceCounts = new HashMap<>();
                     for (String choice : element.getChoices()) {
                         choiceCounts.put(choice, 0);
                     }
                     counts.put(key, choiceCounts);
-                } else if ("rating".equals(type)) {
-                    ratingResponses.put(key, new ArrayList<>());
                 }
             }
         }
 
-        // Get responses
+        // ✅ Get responses
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
         if (responses.isEmpty()) {
             throw new IllegalArgumentException("No responses found for this survey.");
         }
         int totalResponses = responses.size();
 
-        // Aggregate answers
+        // ✅ Aggregate answers
         for (ResponseModel response : responses) {
             Map<String, Object> answers = response.getAnswers();
             for (Map.Entry<String, Object> entry : answers.entrySet()) {
@@ -286,21 +291,11 @@ public class ResponseService {
                     } catch (Exception e) {
                         // Optional: log or ignore
                     }
-
-                } else if (rankingScores.containsKey(key) && value instanceof List<?> rankingList) {
-                    int rank = 1;
-                    for (Object item : rankingList) {
-                        String choice = String.valueOf(item);
-                        int finalRank = rank;
-                        rankingScores.get(key).computeIfPresent(choice, (k, v) -> v + finalRank);
-                        rank++;
-                    }
-                    rankingRespondentCounts.put(key, rankingRespondentCounts.getOrDefault(key, 0) + 1);
                 }
             }
         }
 
-        // Build final result
+        // ✅ Build final result
         List<SurveyResultDTO> results = new ArrayList<>();
         for (SurveyDefinition.Page page : definition.getPages()) {
             for (SurveyDefinition.Element element : page.getElements()) {
@@ -316,7 +311,7 @@ public class ResponseService {
                         int percentage = (int) Math.round((count * 100.0) / totalResponses);
                         percentageMap.put(choice, percentage);
                     }
-                    results.add(new SurveyResultDTO(title, "choice", percentageMap));
+                    results.add(new SurveyResultDTO(title, type, percentageMap));
                 } else if (ratingResponses.containsKey(key)) {
                     List<Integer> ratings = ratingResponses.get(key);
                     double average = ratings.stream().mapToInt(i -> i).average().orElse(0.0);
@@ -325,17 +320,24 @@ public class ResponseService {
                     ratingResult.put("responseCount", ratings.size());
 
                     results.add(new SurveyResultDTO(title, "rating", ratingResult));
-                } else if (rankingScores.containsKey(key)) {
-                    Map<String, Integer> scoreMap = rankingScores.get(key);
-                    int respondentCount = rankingRespondentCounts.getOrDefault(key, 1);
+                } else if ("boolean".equals(type)) {
+                    int yesCount = 0;
+                    int noCount = 0;
 
-                    Map<String, Object> avgRankMap = new HashMap<>();
-                    for (Map.Entry<String, Integer> entry : scoreMap.entrySet()) {
-                        double avgRank = (double) entry.getValue() / respondentCount;
-                        avgRankMap.put(entry.getKey(), avgRank);
+                    for (ResponseModel response : responses) {
+                        Object val = response.getAnswers().get(key);
+                        if (val != null) {
+                            boolean boolVal = Boolean.parseBoolean(val.toString());
+                            if (boolVal) yesCount++;
+                            else noCount++;
+                        }
                     }
 
-                    results.add(new SurveyResultDTO(title, "ranking", avgRankMap));
+                    Map<String, Object> boolResult = new HashMap<>();
+                    boolResult.put("Yes", yesCount);
+                    boolResult.put("No", noCount);
+
+                    results.add(new SurveyResultDTO(title, "boolean", boolResult));
                 }
             }
         }
@@ -415,9 +417,6 @@ public class ResponseService {
                 Object userValue = userAnswers.get(key);
 
                 if ("rating".equals(type)) {
-                    List<Integer> ratings = ratingResponses.getOrDefault(key, List.of());
-                    double average = ratings.stream().mapToInt(i -> i).average().orElse(0.0);
-
                     Map<String, Object> ratingResult = new HashMap<>();
                     if (userValue != null) {
                         try {
@@ -425,7 +424,7 @@ public class ResponseService {
                         } catch (Exception ignored) {
                         }
                     }
-                    results.add(new SurveyResultDTO(title, "rating", ratingResult));
+                    results.add(new SurveyResultDTO(title, type, ratingResult));
 
                 } else if (element.getChoices() != null) {
                     String choiceType = switch (type) {
@@ -448,7 +447,7 @@ public class ResponseService {
                         int percentage = (int) Math.round((count * 100.0) / totalResponses);
                         Map<String, Object> choiceMap = new HashMap<>();
                         choiceMap.put("percentage", percentage);
-                        choiceMap.put("selected", userSelectedChoices.contains(choice));
+                        choiceMap.put("correct", userSelectedChoices.contains(choice));
                         detailedMap.put(choice, choiceMap);
                     }
 
@@ -469,5 +468,4 @@ public class ResponseService {
 
         return results;
     }
-
 }
