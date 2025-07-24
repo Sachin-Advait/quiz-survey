@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
@@ -20,9 +21,11 @@ public class QuizSurveyService {
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
+    private final QuizSurveySocketController quizSurveySocketController;
 
     // Create Quiz & Survey
     public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
+        quizSurveySocketController.pushNewSurvey(model.getId(), model.getIsMandatory(), model.getTargetedUsers());
         return quizSurveyRepo.save(model);
     }
 
