@@ -63,12 +63,33 @@ public class ResponseController {
         );
     }
 
-    @GetMapping("/survey-results/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResults(@PathVariable String quizSurveyId) {
+    @GetMapping("/admin/survey-results/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultsAdmin(@PathVariable String quizSurveyId) {
         List<SurveyResultDTO> results;
 
         try {
-            results = responseService.getSurveyResults(quizSurveyId);
+            results = responseService.getSurveyResultsAdmin(quizSurveyId);
+        } catch (IllegalArgumentException ex) {
+            ApiResponseDTO<List<SurveyResultDTO>> emptyResponse = new ApiResponseDTO<>(true,
+                    "No survey responses found.", List.of());
+            return ResponseEntity.ok(emptyResponse);
+        }
+        ApiResponseDTO<List<SurveyResultDTO>> response = new ApiResponseDTO<>(
+                true,
+                "Surveys result retrieved successfully",
+                results
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/survey-results/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultByUserId(
+            @PathVariable String quizSurveyId,
+            @RequestParam String userId) {
+        List<SurveyResultDTO> results;
+
+        try {
+            results = responseService.getSurveyResultsByUserId(quizSurveyId, userId);
         } catch (IllegalArgumentException ex) {
             ApiResponseDTO<List<SurveyResultDTO>> emptyResponse = new ApiResponseDTO<>(true,
                     "No survey responses found.", List.of());

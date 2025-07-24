@@ -10,6 +10,7 @@ import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -44,16 +45,32 @@ public class QuizSurveyService {
 
     // Get All Quizzes and Surveys
     public List<QuizzesSurveysDTO> getQuizzesSurveys(String userId) {
-        List<QuizSurveyModel> quizzes = quizSurveyRepo.findAll();
+        if (userId == null) {
+            return Collections.emptyList();
+        }
+
+        UserModel user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid username"));
+
+        List<QuizSurveyModel> quizzes = quizSurveyRepo.findAll().stream()
+                .filter(quiz ->
+                        quiz.getTargetedUsers() != null &&
+                                !quiz.getTargetedUsers().isEmpty() &&
+                                quiz.getTargetedUsers().contains(user.getUsername())
+                )
+                .toList();
 
         return quizzes.stream().map(quiz -> {
             int totalQuestions = quiz.getDefinitionJson().getPages() != null &&
-                    !quiz.getDefinitionJson().getPages().get(0).getElements().isEmpty()
+                    !quiz.getDefinitionJson().getPages().isEmpty() &&
+                    quiz.getDefinitionJson().getPages().get(0).getElements() != null
                     ? quiz.getDefinitionJson().getPages().get(0).getElements().size()
                     : 0;
 
+            boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
+            boolean isMandatory = !isParticipated && Boolean.TRUE.equals(quiz.getIsMandatory());
 
-            QuizzesSurveysDTO.QuizzesSurveysDTOBuilder builder = QuizzesSurveysDTO.builder()
+            return QuizzesSurveysDTO.builder()
                     .id(quiz.getId())
                     .type(quiz.getType())
                     .title(quiz.getTitle())
@@ -61,27 +78,13 @@ public class QuizSurveyService {
                     .status(quiz.getStatus())
                     .quizTotalDuration(quiz.getQuizTotalDuration())
                     .isAnnounced(quiz.getIsAnnounced())
-                    .createdAt(quiz.getCreatedAt());
-
-            if (userId != null) {
-                UserModel user = userRepository.findById(userId)
-                        .orElseThrow(() -> new RuntimeException("Invalid username"));
-                boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
-
-                // Mandatory logic:
-                boolean isMandatory = false;
-                if (!isParticipated) {
-                    isMandatory = quiz.getTargetedUsers() != null && !quiz.getTargetedUsers().isEmpty() &&
-                            quiz.getTargetedUsers().contains(user.getUsername()) && quiz.getIsMandatory();
-                }
-
-                builder.isParticipated(isParticipated);
-                builder.isMandatory(isMandatory);
-            }
-
-            return builder.build();
+                    .createdAt(quiz.getCreatedAt())
+                    .isParticipated(isParticipated)
+                    .isMandatory(isMandatory)
+                    .build();
         }).toList();
     }
+
 
     // Update Quiz & Survey by ID
     public QuizSurveyModel updateQuizSurvey(QuizSurveyModel model) {

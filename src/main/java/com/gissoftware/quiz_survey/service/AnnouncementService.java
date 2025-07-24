@@ -11,8 +11,10 @@ import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -71,12 +73,21 @@ public class AnnouncementService {
         List<Announcement> announcements = announcementRepo.findAll();
         Set<String> allIds = announcements.stream()
                 .map(Announcement::getId)
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
 
         AnnouncementRead read = readRepo.findById(userId)
-                .orElse(AnnouncementRead.builder().userId(userId).build());
+                .orElse(AnnouncementRead.builder()
+                        .userId(userId)
+                        .announcementIds(new HashSet<>()) // 👈 Initialize here
+                        .build());
+
+        // Ensure it's initialized even if found from DB but null inside
+        if (read.getAnnouncementIds() == null) {
+            read.setAnnouncementIds(new HashSet<>());
+        }
 
         read.getAnnouncementIds().addAll(allIds);
         readRepo.save(read);
     }
+
 }

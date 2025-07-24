@@ -13,7 +13,6 @@ import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,7 +26,7 @@ public class ResponseService {
     private final UserRepository userRepository;
 
     // Store Quiz & Survey Responses
-    @Transactional
+//    @Transactional
     public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
         userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
@@ -219,7 +218,7 @@ public class ResponseService {
     }
 
     // Get Survey Result
-    public List<SurveyResultDTO> getSurveyResults(String quizSurveyId) {
+    public List<SurveyResultDTO> getSurveyResultsAdmin(String quizSurveyId) {
         // Fetch survey
         QuizSurveyModel survey = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
@@ -343,4 +342,132 @@ public class ResponseService {
 
         return results;
     }
+
+    public List<SurveyResultDTO> getSurveyResultsByUserId(String quizSurveyId, String userId) {
+        QuizSurveyModel survey = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
+
+        SurveyDefinition definition = survey.getDefinitionJson();
+
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+        if (responses.isEmpty()) {
+            throw new IllegalArgumentException("No responses found for this survey.");
+        }
+
+        int totalResponses = responses.size();
+
+        Map<String, Map<String, Integer>> counts = new HashMap<>();
+        Map<String, List<Integer>> ratingResponses = new HashMap<>();
+
+        // Get user's response
+        ResponseModel userResponse = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
+                .orElseThrow(() -> new IllegalArgumentException("User has not responded to this survey"));
+        Map<String, Object> userAnswers = userResponse.getAnswers();
+
+        // Build aggregates
+        for (ResponseModel response : responses) {
+            Map<String, Object> answers = response.getAnswers();
+            for (SurveyDefinition.Page page : definition.getPages()) {
+                for (SurveyDefinition.Element element : page.getElements()) {
+                    String key = element.getName();
+                    String type = element.getType().toLowerCase();
+                    if (!answers.containsKey(key)) continue;
+
+                    Object value = answers.get(key);
+
+                    if ("rating".equals(type)) {
+                        ratingResponses.putIfAbsent(key, new ArrayList<>());
+                        try {
+                            int rating = (int) Double.parseDouble(value.toString());
+                            ratingResponses.get(key).add(rating);
+                        } catch (Exception ignored) {
+                        }
+                    } else if (element.getChoices() != null) {
+                        counts.putIfAbsent(key, new HashMap<>());
+                        for (String choice : element.getChoices()) {
+                            counts.get(key).putIfAbsent(choice, 0);
+                        }
+
+                        if (value instanceof List<?> list) {
+                            for (Object val : list) {
+                                String choice = val.toString();
+                                counts.get(key).computeIfPresent(choice, (k, v) -> v + 1);
+                            }
+                        } else {
+                            String choice = value.toString();
+                            counts.get(key).computeIfPresent(choice, (k, v) -> v + 1);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Final result list
+        List<SurveyResultDTO> results = new ArrayList<>();
+
+        // Build final per-user response with aggregate
+        for (SurveyDefinition.Page page : definition.getPages()) {
+            for (SurveyDefinition.Element element : page.getElements()) {
+                String key = element.getName();
+                String title = element.getTitle();
+                String type = element.getType().toLowerCase();
+
+                Object userValue = userAnswers.get(key);
+
+                if ("rating".equals(type)) {
+                    List<Integer> ratings = ratingResponses.getOrDefault(key, List.of());
+                    double average = ratings.stream().mapToInt(i -> i).average().orElse(0.0);
+
+                    Map<String, Object> ratingResult = new HashMap<>();
+                    if (userValue != null) {
+                        try {
+                            ratingResult.put("value", Integer.parseInt(userValue.toString()));
+                        } catch (Exception ignored) {
+                        }
+                    }
+                    results.add(new SurveyResultDTO(title, "rating", ratingResult));
+
+                } else if (element.getChoices() != null) {
+                    String choiceType = switch (type) {
+                        case "dropdown", "radiogroup", "checkbox" -> type;
+                        default -> "choice";
+                    };
+
+                    Map<String, Integer> countMap = counts.getOrDefault(key, new HashMap<>());
+
+                    Set<String> userSelectedChoices = new HashSet<>();
+                    if (userValue instanceof List<?> list) {
+                        list.forEach(val -> userSelectedChoices.add(val.toString()));
+                    } else if (userValue != null) {
+                        userSelectedChoices.add(userValue.toString());
+                    }
+
+                    Map<String, Object> detailedMap = new LinkedHashMap<>();
+                    for (String choice : element.getChoices()) {
+                        int count = countMap.getOrDefault(choice, 0);
+                        int percentage = (int) Math.round((count * 100.0) / totalResponses);
+                        Map<String, Object> choiceMap = new HashMap<>();
+                        choiceMap.put("percentage", percentage);
+                        choiceMap.put("selected", userSelectedChoices.contains(choice));
+                        detailedMap.put(choice, choiceMap);
+                    }
+
+                    results.add(new SurveyResultDTO(title, choiceType, detailedMap));
+
+                } else if ("boolean".equals(type)) {
+                    Map<String, Object> booleanMap = new HashMap<>();
+                    booleanMap.put("value", userValue != null ? Boolean.parseBoolean(userValue.toString()) : null);
+                    results.add(new SurveyResultDTO(title, "boolean", booleanMap));
+
+                } else if ("text".equals(type) || "comment".equals(type)) {
+                    Map<String, Object> textMap = new HashMap<>();
+                    textMap.put("value", userValue != null ? userValue.toString() : null);
+                    results.add(new SurveyResultDTO(title, type, textMap));
+                }
+            }
+        }
+
+        return results;
+    }
+
 }
