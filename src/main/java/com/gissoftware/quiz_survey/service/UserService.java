@@ -77,10 +77,6 @@ public class UserService {
         UserModel user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        if (request.getUsername() != null) {
-            user.setUsername(request.getUsername());
-        }
-
         if (request.getRole() != null) {
             user.setRole(request.getRole());
         }

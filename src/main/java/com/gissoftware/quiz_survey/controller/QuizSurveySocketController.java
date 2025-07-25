@@ -1,8 +1,6 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.PushQuizSurveyMessage;
-import com.gissoftware.quiz_survey.service.QuizSurveyService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
 
@@ -12,8 +10,6 @@ import java.util.List;
 public class QuizSurveySocketController {
 
     private final SimpMessagingTemplate messagingTemplate;
-    @Autowired
-    private QuizSurveyService quizSurveyService;
 
     public QuizSurveySocketController(SimpMessagingTemplate messagingTemplate) {
         this.messagingTemplate = messagingTemplate;
