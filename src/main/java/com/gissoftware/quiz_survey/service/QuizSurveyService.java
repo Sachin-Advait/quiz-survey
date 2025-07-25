@@ -3,6 +3,7 @@ package com.gissoftware.quiz_survey.service;
 import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
+import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
@@ -11,7 +12,6 @@ import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -22,6 +22,7 @@ public class QuizSurveyService {
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
     private final QuizSurveySocketController quizSurveySocketController;
+    private final QuizSurveyMapper quizSurveyMapper;
 
     // Create Quiz & Survey
     public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
@@ -48,44 +49,29 @@ public class QuizSurveyService {
 
     // Get All Quizzes and Surveys
     public List<QuizzesSurveysDTO> getQuizzesSurveys(String userId) {
+        List<QuizSurveyModel> quizzes;
+
         if (userId == null) {
-            return Collections.emptyList();
+            quizzes = quizSurveyRepo.findAll();
+
+            return quizzes.stream()
+                    .map(quizSurveyMapper::mapToDtoWithoutUser)
+                    .toList();
         }
 
         UserModel user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
 
-        List<QuizSurveyModel> quizzes = quizSurveyRepo.findAll().stream()
-                .filter(quiz ->
-                        quiz.getTargetedUsers() != null &&
-                                !quiz.getTargetedUsers().isEmpty() &&
-                                quiz.getTargetedUsers().contains(user.getUsername())
-                )
+        String username = user.getUsername();
+
+        quizzes = quizSurveyRepo.findAll().stream()
+                .filter(quiz -> quiz.getTargetedUsers() != null &&
+                        quiz.getTargetedUsers().contains(username))
                 .toList();
 
-        return quizzes.stream().map(quiz -> {
-            int totalQuestions = quiz.getDefinitionJson().getPages() != null &&
-                    !quiz.getDefinitionJson().getPages().isEmpty() &&
-                    quiz.getDefinitionJson().getPages().get(0).getElements() != null
-                    ? quiz.getDefinitionJson().getPages().get(0).getElements().size()
-                    : 0;
-
-            boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
-            boolean isMandatory = !isParticipated && Boolean.TRUE.equals(quiz.getIsMandatory());
-
-            return QuizzesSurveysDTO.builder()
-                    .id(quiz.getId())
-                    .type(quiz.getType())
-                    .title(quiz.getTitle())
-                    .totalQuestion(totalQuestions)
-                    .status(quiz.getStatus())
-                    .quizTotalDuration(quiz.getQuizTotalDuration())
-                    .isAnnounced(quiz.getIsAnnounced())
-                    .createdAt(quiz.getCreatedAt())
-                    .isParticipated(isParticipated)
-                    .isMandatory(isMandatory)
-                    .build();
-        }).toList();
+        return quizzes.stream()
+                .map(quiz -> quizSurveyMapper.mapToDtoWithUser(quiz, userId))
+                .toList();
     }
 
 
