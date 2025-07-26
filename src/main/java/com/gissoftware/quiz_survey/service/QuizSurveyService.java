@@ -90,8 +90,7 @@ public class QuizSurveyService {
         if (model.getQuizDuration() != null) existing.setQuizDuration(model.getQuizDuration());
         if (model.getIsAnnounced() != null) existing.setIsAnnounced(model.getIsAnnounced());
         if (model.getIsMandatory() != null) existing.setIsMandatory(model.getIsMandatory());
-        if (model.getTargetedUsers() != null) existing.setTargetedUsers(model.getTargetedUsers());
-
+        if (!model.getTargetedUsers().isEmpty()) existing.setTargetedUsers(model.getTargetedUsers());
 
         return quizSurveyRepo.save(existing);
     }
