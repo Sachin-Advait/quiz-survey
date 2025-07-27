@@ -26,8 +26,14 @@ public class QuizSurveyService {
 
     // Create Quiz & Survey
     public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
-        quizSurveySocketController.pushNewSurvey(model.getId(), model.getIsMandatory(), model.getTargetedUsers());
-        return quizSurveyRepo.save(model);
+
+        QuizSurveyModel quizSurveyModel = quizSurveyRepo.save(model);
+        quizSurveySocketController.pushNewSurvey(
+                quizSurveyModel.getId(),
+                quizSurveyModel.getIsMandatory(),
+                quizSurveyModel.getTargetedUsers()
+        );
+        return quizSurveyModel;
     }
 
     // Get Quiz & Survey By ID

@@ -270,6 +270,7 @@ public class ResponseService {
         // ✅ Aggregate answers
         for (ResponseModel response : responses) {
             Map<String, Object> answers = response.getAnswers();
+            if (answers == null) continue;
             for (Map.Entry<String, Object> entry : answers.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
