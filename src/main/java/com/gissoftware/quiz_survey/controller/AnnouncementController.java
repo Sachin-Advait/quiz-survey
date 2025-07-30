@@ -37,13 +37,13 @@ public class AnnouncementController {
     }
 
     // PATCH /api/announcements/read — (Mark as read)
-    @PatchMapping("/announcements/read")
+    @PutMapping("/announcements/read")
     public ResponseEntity<ApiResponseDTO<String>> markAsRead(@RequestBody AnnouncementReadRequest req) {
         announcementService.markAsRead(req.getUserId(), req.getAnnouncementId());
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Marked as read", null));
     }
 
-    @PatchMapping("/announcements/mark-all-read")
+    @PutMapping("/announcements/mark-all-read")
     public ResponseEntity<ApiResponseDTO<String>> markAllAsRead(@RequestBody Map<String, String> req) {
         String userId = req.get("userId");
         announcementService.markAllAsRead(userId);

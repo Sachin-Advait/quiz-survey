@@ -22,7 +22,7 @@ public class QuizSurveyAdminController {
                 "Quiz & survey created successfully", created));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> updateQuizSurvey(
             @PathVariable String id,
             @RequestBody QuizSurveyModel updatedModel

@@ -30,7 +30,7 @@ public class UserController {
     }
 
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<UserResponseDTO>> updateUser(
             @PathVariable String id,
             @RequestBody UserModel request) {
