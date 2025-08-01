@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.QuizCompletionStatsDTO;
 import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.service.QuizSurveyService;
@@ -45,5 +46,11 @@ public class QuizSurveyAdminController {
     public ResponseEntity<ApiResponseDTO<QuizInsightsDTO>> getQuizInsights(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz insights retrieved successfully", service.getQuizInsights(quizSurveyId)));
+    }
+
+    @GetMapping("/completion-stats/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizCompletionStatsDTO>> getQuizStats(@PathVariable String quizSurveyId) {
+        QuizCompletionStatsDTO stats = service.getQuizCompletionStats(quizSurveyId);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "Quiz insights retrieved successfully", stats));
     }
 }

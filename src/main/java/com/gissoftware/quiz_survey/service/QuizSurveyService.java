@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
+import com.gissoftware.quiz_survey.dto.QuizCompletionStatsDTO;
 import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
@@ -196,5 +197,29 @@ public class QuizSurveyService {
                 .lowScore(low.getScore())
                 .mostIncorrectQuestions(mostIncorrectQuestions)
                 .build();
+    }
+
+    public QuizCompletionStatsDTO getQuizCompletionStats(String quizId) {
+        var quiz = quizSurveyRepo.findById(quizId)
+                .orElseThrow(() -> new RuntimeException("Quiz not found"));
+
+        List<String> targetedUsers = quiz.getTargetedUsers();
+        int totalAssigned = targetedUsers.size();
+
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizId);
+        List<String> completedUserIds = responses.stream()
+                .map(ResponseModel::getUserId)
+                .distinct()
+                .toList();
+
+        int totalCompleted = (int) targetedUsers.stream()
+                .filter(completedUserIds::contains)
+                .count();
+
+        int totalNotCompleted = totalAssigned - totalCompleted;
+        double completionRate = totalAssigned == 0 ? 0 :
+                Math.round(((double) totalCompleted / totalAssigned) * 10000.0) / 100.0;
+
+        return new QuizCompletionStatsDTO(totalAssigned, totalCompleted, totalNotCompleted, completionRate);
     }
 }
