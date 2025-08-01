@@ -1,10 +1,12 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
+import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
+import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
@@ -12,7 +14,9 @@ import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +27,20 @@ public class QuizSurveyService {
     private final UserRepository userRepository;
     private final QuizSurveySocketController quizSurveySocketController;
     private final QuizSurveyMapper quizSurveyMapper;
+
+    private static boolean isCorrect(Object correctAnswer, Object userAnswer) {
+        boolean correct = false;
+        if (correctAnswer instanceof String str) {
+            correct = str.equals(userAnswer);
+        } else if (correctAnswer instanceof List<?> correctList) {
+            if (userAnswer instanceof List<?> userList) {
+                correct = correctList.containsAll(userList) && userList.containsAll(correctList);
+            } else {
+                correct = correctList.contains(userAnswer);
+            }
+        }
+        return correct;
+    }
 
     // Create Quiz & Survey
     public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
@@ -80,7 +98,6 @@ public class QuizSurveyService {
                 .toList();
     }
 
-
     // Update Quiz & Survey by ID
     public QuizSurveyModel updateQuizSurvey(QuizSurveyModel model) {
         QuizSurveyModel existing = quizSurveyRepo.findById(model.getId())
@@ -104,5 +121,80 @@ public class QuizSurveyService {
     // Delete Quiz & Survey by ID
     public void deleteQuizSurvey(String id) {
         quizSurveyRepo.deleteById(id);
+    }
+
+    public QuizInsightsDTO getQuizInsights(String quizSurveyId) {
+        QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new IllegalArgumentException("Quiz not found"));
+
+        if (!quiz.getType().equalsIgnoreCase("quiz")) {
+            throw new IllegalArgumentException("Insights are only available for quizzes");
+        }
+
+        var responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+        if (responses.isEmpty()) {
+            throw new IllegalArgumentException("No responses found for this quiz");
+        }
+
+        int totalScore = 0;
+        int totalUsers = responses.size();
+        int passCount = 0;
+        int maxScore = quiz.getMaxScore() != null ? quiz.getMaxScore() : 100;
+
+        Map<String, Integer> incorrectCountPerQuestion = new HashMap<>();
+
+        ResponseModel top = null, low = null;
+
+        for (ResponseModel r : responses) {
+            int score = r.getScore() != null ? r.getScore() : 0;
+            totalScore += score;
+
+            if (score >= 0.5 * maxScore) passCount++; // 50% threshold
+
+            double topScore = top != null && top.getScore() != null ? top.getScore() : Double.NEGATIVE_INFINITY;
+            double lowScore = low != null && low.getScore() != null ? low.getScore() : Double.POSITIVE_INFINITY;
+
+            if (score > topScore) top = r;
+            if (score < lowScore) low = r;
+
+
+            // Find incorrect answers
+            Map<String, Object> userAnswers = r.getAnswers();
+            Map<String, Object> answerKey = quiz.getAnswerKey();
+
+            for (Map.Entry<String, Object> entry : answerKey.entrySet()) {
+                String qId = entry.getKey();
+                Object correctAnswer = entry.getValue();
+                Object userAnswer = userAnswers.get(qId);
+
+                boolean correct = isCorrect(correctAnswer, userAnswer);
+
+                if (!correct) {
+                    incorrectCountPerQuestion.put(qId,
+                            incorrectCountPerQuestion.getOrDefault(qId, 0) + 1);
+                }
+            }
+        }
+
+        List<String> mostIncorrectQuestions = incorrectCountPerQuestion.entrySet().stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .toList();
+
+
+        double average = (double) totalScore / totalUsers;
+        double formattedTotalScore = Math.round(average * 100.0) / 100.0;
+
+        return QuizInsightsDTO.builder()
+                .averageScore(formattedTotalScore)
+                .passRate(100.0 * passCount / totalUsers)
+                .failRate(100.0 * (totalUsers - passCount) / totalUsers)
+                .topScorer(top.getUsername())
+                .topScore(top.getScore())
+                .lowScorer(low.getUsername())
+                .lowScore(low.getScore())
+                .mostIncorrectQuestions(mostIncorrectQuestions)
+                .build();
     }
 }

@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.service.QuizSurveyService;
 import lombok.RequiredArgsConstructor;
@@ -38,5 +39,11 @@ public class QuizSurveyAdminController {
         service.deleteQuizSurvey(id);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz & survey deleted successfully", null));
+    }
+
+    @GetMapping("/insights/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizInsightsDTO>> getQuizInsights(@PathVariable String quizSurveyId) {
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Quiz insights retrieved successfully", service.getQuizInsights(quizSurveyId)));
     }
 }
