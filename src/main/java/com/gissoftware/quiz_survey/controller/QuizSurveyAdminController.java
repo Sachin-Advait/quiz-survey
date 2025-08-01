@@ -51,6 +51,7 @@ public class QuizSurveyAdminController {
     @GetMapping("/completion-stats/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizCompletionStatsDTO>> getQuizStats(@PathVariable String quizSurveyId) {
         QuizCompletionStatsDTO stats = service.getQuizCompletionStats(quizSurveyId);
-        return ResponseEntity.ok(new ApiResponseDTO<>(true, "Quiz insights retrieved successfully", stats));
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Quiz completion stats retrieved successfully", stats));
     }
 }

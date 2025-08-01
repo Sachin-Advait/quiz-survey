@@ -8,6 +8,7 @@ import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
+import com.gissoftware.quiz_survey.model.SurveyDefinition;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -132,7 +134,7 @@ public class QuizSurveyService {
             throw new IllegalArgumentException("Insights are only available for quizzes");
         }
 
-        var responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
         if (responses.isEmpty()) {
             throw new IllegalArgumentException("No responses found for this quiz");
         }
@@ -142,62 +144,73 @@ public class QuizSurveyService {
         int passCount = 0;
         int maxScore = quiz.getMaxScore() != null ? quiz.getMaxScore() : 100;
 
-        Map<String, Integer> incorrectCountPerQuestion = new HashMap<>();
-
         ResponseModel top = null, low = null;
+        Map<String, Integer> incorrectCountPerQuestion = new HashMap<>();
+        Map<String, Object> answerKey = quiz.getAnswerKey();
 
         for (ResponseModel r : responses) {
             int score = r.getScore() != null ? r.getScore() : 0;
             totalScore += score;
 
-            if (score >= 0.5 * maxScore) passCount++; // 50% threshold
+            if (score >= 0.5 * maxScore) passCount++;
 
-            double topScore = top != null && top.getScore() != null ? top.getScore() : Double.NEGATIVE_INFINITY;
-            double lowScore = low != null && low.getScore() != null ? low.getScore() : Double.POSITIVE_INFINITY;
+            if (top == null || (r.getScore() != null && r.getScore() > top.getScore())) {
+                top = r;
+            }
+            if (low == null || (r.getScore() != null && r.getScore() < low.getScore())) {
+                low = r;
+            }
 
-            if (score > topScore) top = r;
-            if (score < lowScore) low = r;
-
-
-            // Find incorrect answers
             Map<String, Object> userAnswers = r.getAnswers();
-            Map<String, Object> answerKey = quiz.getAnswerKey();
 
             for (Map.Entry<String, Object> entry : answerKey.entrySet()) {
                 String qId = entry.getKey();
                 Object correctAnswer = entry.getValue();
                 Object userAnswer = userAnswers.get(qId);
 
-                boolean correct = isCorrect(correctAnswer, userAnswer);
-
-                if (!correct) {
-                    incorrectCountPerQuestion.put(qId,
-                            incorrectCountPerQuestion.getOrDefault(qId, 0) + 1);
+                boolean isCorrect = isCorrect(correctAnswer, userAnswer);
+                if (!isCorrect) {
+                    incorrectCountPerQuestion.merge(qId, 1, Integer::sum);
                 }
             }
         }
 
-        List<String> mostIncorrectQuestions = incorrectCountPerQuestion.entrySet().stream()
-                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                .limit(5)
-                .map(Map.Entry::getKey)
+        // Get the most incorrectly answered questions (sorted by count desc)
+        List<Map.Entry<String, Integer>> sortedIncorrect = incorrectCountPerQuestion.entrySet()
+                .stream()
+                .sorted((a, b) -> b.getValue() - a.getValue())
                 .toList();
+
+        List<QuizInsightsDTO.MostIncorrectQuestionDTO> mostIncorrectQuestions = sortedIncorrect.stream()
+                .map(entry -> {
+                    String questionId = entry.getKey();
+
+                    // Search across all pages and elements to find the matching question ID
+                    String questionText = quiz.getDefinitionJson().getPages().stream()
+                            .flatMap(page -> page.getElements().stream())
+                            .filter(element -> questionId.equals(element.getName())) // Match ID
+                            .map(SurveyDefinition.Element::getTitle)
+                            .findFirst()
+                            .orElse("Unknown Question"); // Fallback if not found
+
+                    return new QuizInsightsDTO.MostIncorrectQuestionDTO(questionText, entry.getValue());
+                })
+                .collect(Collectors.toList());
 
 
         double average = (double) totalScore / totalUsers;
-        double formattedTotalScore = Math.round(average * 100.0) / 100.0;
+        double formattedAverage = Math.round(average * 100.0) / 100.0;
 
         return QuizInsightsDTO.builder()
-                .averageScore(formattedTotalScore)
+                .averageScore(formattedAverage)
                 .passRate(100.0 * passCount / totalUsers)
                 .failRate(100.0 * (totalUsers - passCount) / totalUsers)
-                .topScorer(top.getUsername())
-                .topScore(top.getScore())
-                .lowScorer(low.getUsername())
-                .lowScore(low.getScore())
+                .topScorer(new QuizInsightsDTO.ScorerDTO(top.getUsername(), top.getScore()))
+                .lowestScorer(new QuizInsightsDTO.ScorerDTO(low.getUsername(), low.getScore()))
                 .mostIncorrectQuestions(mostIncorrectQuestions)
                 .build();
     }
+
 
     public QuizCompletionStatsDTO getQuizCompletionStats(String quizId) {
         var quiz = quizSurveyRepo.findById(quizId)
@@ -208,7 +221,7 @@ public class QuizSurveyService {
 
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizId);
         List<String> completedUserIds = responses.stream()
-                .map(ResponseModel::getUserId)
+                .map(ResponseModel::getUsername)
                 .distinct()
                 .toList();
 
