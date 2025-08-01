@@ -56,7 +56,7 @@ public class ResponseController {
     }
 
     @GetMapping("admin/quiz-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<QuizResultDTO>>> getQuizResultsAdmin(@PathVariable String quizSurveyId) {
+    public ResponseEntity<ApiResponseDTO<List<QuizResultAdminDTO>>> getQuizResultsAdmin(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true, "Retrieved submitted responses successfully",
                         responseService.getQuizResultsAdmin(quizSurveyId))

@@ -1,9 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
-import com.gissoftware.quiz_survey.dto.QuizResultDTO;
-import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
-import com.gissoftware.quiz_survey.dto.SurveyResultDTO;
-import com.gissoftware.quiz_survey.dto.SurveySubmissionRequest;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.SurveyDefinition;
@@ -36,11 +33,12 @@ public class ResponseService {
                 .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
 
         // ✅ Check if the user has already submitted a response
-        boolean alreadySubmitted = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId,
-                request.getUserId()).isPresent();
-
-        if (alreadySubmitted) {
-            throw new IllegalStateException("You have already submitted this quiz/survey.");
+        if (qs.getType().equalsIgnoreCase("survey")) {
+            List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId,
+                    request.getUserId());
+            if (!existingResponses.isEmpty()) {
+                throw new IllegalStateException("You have already submitted this survey.");
+            }
         }
 
         // Handle response
@@ -80,7 +78,7 @@ public class ResponseService {
                 .answers(request.getAnswers())
                 .score(null)
                 .maxScore(null)
-                .finishTime(null)
+                .finishTime(request.getFinishTime())
                 .build());
     }
 
@@ -130,12 +128,28 @@ public class ResponseService {
         return responseRepo.findByUserId(userId);
     }
 
-    // Get Quiz Result by User ID Common Function
-    private QuizResultDTO buildQuizResultDTO(ResponseModel response, QuizSurveyModel quizSurvey) {
+
+    // Get Quiz Result by User ID
+    public QuizResultDTO getQuizResultByUserId(String quizSurveyId, String userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Invalid userId"));
+
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId);
+        if (responses.isEmpty()) {
+            throw new IllegalArgumentException("Response not found for this user and quiz.");
+        }
+
+        ResponseModel highestScoreInQuizResult = responses.stream()
+                .max(Comparator.comparing(ResponseModel::getScore, Comparator.nullsLast(Integer::compareTo)))
+                .orElseThrow(() -> new IllegalArgumentException("No responses found."));
+
+        QuizSurveyModel quizSurvey = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new RuntimeException("Quiz survey not found"));
+
         SurveyDefinition definition = quizSurvey.getDefinitionJson();
         Map<String, Object> answerKey = quizSurvey.getAnswerKey();
-        Map<String, Object> selectedAnswers = response.getAnswers();
 
+        Map<String, Object> selectedAnswers = highestScoreInQuizResult.getAnswers();
         Map<String, QuizResultDTO.QuestionAnswerDTO> formattedAnswers = new LinkedHashMap<>();
 
         for (SurveyDefinition.Page page : definition.getPages()) {
@@ -149,31 +163,22 @@ public class ResponseService {
                 if (choices != null) {
                     for (String choice : choices) {
                         boolean isCorrect = false;
+                        Object correct = answerKey.get(questionId);
 
-
-                        if (choice != null) {
-                            Object correct = answerKey.get(questionId);
-                            if (correct instanceof String) {
-                                isCorrect = choice.equals(correct);
-                            } else if (correct instanceof List) {
-                                isCorrect = ((List<?>) correct).contains(choice);
-                            }
-
-
-                            formattedOptions.add(QuizResultDTO.OptionDTO.builder()
-                                    .text(choice)
-                                    .isCorrect(isCorrect)
-                                    .build());
-
-
+                        if (correct instanceof String) {
+                            isCorrect = choice.equals(correct);
+                        } else if (correct instanceof List) {
+                            isCorrect = ((List<?>) correct).contains(choice);
                         }
-                    }
 
+                        formattedOptions.add(QuizResultDTO.OptionDTO.builder()
+                                .text(choice)
+                                .isCorrect(isCorrect)
+                                .build());
+                    }
                 }
 
-                // Extract selected options
                 Object selected = selectedAnswers.get(questionId);
-
                 Object selectedOptions = null;
 
                 if (selected instanceof List<?> selectedList) {
@@ -192,46 +197,124 @@ public class ResponseService {
                         QuizResultDTO.QuestionAnswerDTO.builder()
                                 .choices(formattedOptions)
                                 .type(q.getType())
-                                .correctAnswer(Objects.equals(q.getType(), "text") ? q.getCorrectAnswer().toString() : null)
+                                .correctAnswer(Objects.equals(q.getType(), "text") && q.getCorrectAnswer() != null
+                                        ? q.getCorrectAnswer().toString()
+                                        : null)
                                 .selectedOptions(selectedOptions)
                                 .build());
             }
         }
 
         return QuizResultDTO.builder()
-                .username(response.getUsername())
-                .score(response.getScore())
-                .maxScore(response.getMaxScore())
-                .submittedAt(response.getSubmittedAt())
+                .id(highestScoreInQuizResult.getId())
+                .username(highestScoreInQuizResult.getUsername())
+                .score(highestScoreInQuizResult.getScore())
+                .maxScore(highestScoreInQuizResult.getMaxScore())
+                .submittedAt(highestScoreInQuizResult.getSubmittedAt())
                 .answers(formattedAnswers)
+                .finishTime(highestScoreInQuizResult.getFinishTime())
                 .build();
     }
 
-    // Get Quiz Result by User ID
-    public QuizResultDTO getQuizResultByUserId(String quizSurveyId, String userId) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Invalid userId"));
-
-        ResponseModel response = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("Response not found for this user and quiz."));
-
-        QuizSurveyModel quizSurvey = quizSurveyRepo.findById(quizSurveyId)
-                .orElseThrow(() -> new RuntimeException("Quiz survey not found"));
-
-        return buildQuizResultDTO(response, quizSurvey);
-    }
 
     // Get Quiz Result Admin
-    public List<QuizResultDTO> getQuizResultsAdmin(String quizSurveyId) {
+    public List<QuizResultAdminDTO> getQuizResultsAdmin(String quizSurveyId) {
         QuizSurveyModel quizSurvey = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new RuntimeException("Quiz survey not found"));
 
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
 
-        return responses.stream()
-                .map(response -> buildQuizResultDTO(response, quizSurvey))
-                .toList();
+        SurveyDefinition definition = quizSurvey.getDefinitionJson();
+        Map<String, Object> answerKey = quizSurvey.getAnswerKey();
+
+        // Group responses by userId
+        Map<String, List<ResponseModel>> responsesByUser = responses.stream()
+                .collect(Collectors.groupingBy(ResponseModel::getUserId));
+
+        List<QuizResultAdminDTO> userResults = new ArrayList<>();
+
+        for (Map.Entry<String, List<ResponseModel>> entry : responsesByUser.entrySet()) {
+            String userId = entry.getKey();
+            List<ResponseModel> userAttempts = entry.getValue();
+
+            List<QuizResultDTO> attemptsDTO = userAttempts.stream().map(attempt -> {
+                Map<String, QuizResultDTO.QuestionAnswerDTO> formattedAnswers = new LinkedHashMap<>();
+
+                Map<String, Object> selectedAnswers = attempt.getAnswers();
+
+                for (SurveyDefinition.Page page : definition.getPages()) {
+                    for (SurveyDefinition.Element q : page.getElements()) {
+                        String questionText = q.getTitle();
+                        List<String> choices = q.getChoices();
+                        String questionId = q.getName();
+
+                        List<QuizResultDTO.OptionDTO> formattedOptions = new ArrayList<>();
+
+                        if (choices != null) {
+                            for (String choice : choices) {
+                                boolean isCorrect = false;
+                                Object correct = answerKey.get(questionId);
+
+                                if (correct instanceof String) {
+                                    isCorrect = choice.equals(correct);
+                                } else if (correct instanceof List) {
+                                    isCorrect = ((List<?>) correct).contains(choice);
+                                }
+
+                                formattedOptions.add(QuizResultDTO.OptionDTO.builder()
+                                        .text(choice)
+                                        .isCorrect(isCorrect)
+                                        .build());
+                            }
+                        }
+
+                        Object selected = selectedAnswers.get(questionId);
+                        Object selectedOptions = null;
+
+                        if (selected instanceof List<?> selectedList) {
+                            if (selectedList.size() == 1) {
+                                selectedOptions = String.valueOf(selectedList.get(0));
+                            } else if (!selectedList.isEmpty()) {
+                                selectedOptions = selectedList.stream()
+                                        .map(String::valueOf)
+                                        .toList();
+                            }
+                        } else if (selected != null) {
+                            selectedOptions = selected.toString();
+                        }
+
+                        formattedAnswers.put(questionText, QuizResultDTO.QuestionAnswerDTO.builder()
+                                .choices(formattedOptions)
+                                .type(q.getType())
+                                .correctAnswer(Objects.equals(q.getType(), "text") && q.getCorrectAnswer() != null
+                                        ? q.getCorrectAnswer().toString()
+                                        : null)
+                                .selectedOptions(selectedOptions)
+                                .build());
+                    }
+                }
+
+                return QuizResultDTO.builder()
+                        .id(attempt.getId())
+                        .username(attempt.getUsername())
+                        .score(attempt.getScore())
+                        .maxScore(attempt.getMaxScore())
+                        .submittedAt(attempt.getSubmittedAt())
+                        .answers(formattedAnswers)
+                        .finishTime(attempt.getFinishTime())
+                        .build();
+            }).toList();
+
+            userResults.add(QuizResultAdminDTO.builder()
+                    .id(userId)
+                    .username(userAttempts.get(0).getUsername())
+                    .attempts(attemptsDTO)
+                    .build());
+        }
+
+        return userResults;
     }
+
 
     // Get Survey Result
     public List<SurveyResultDTO> getSurveyResultsAdmin(String quizSurveyId) {
@@ -363,8 +446,12 @@ public class ResponseService {
         Map<String, List<Integer>> ratingResponses = new HashMap<>();
 
         // Get user's response
-        ResponseModel userResponse = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId)
-                .orElseThrow(() -> new IllegalArgumentException("User has not responded to this survey"));
+        List<ResponseModel> userResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId);
+        if (responses.isEmpty()) {
+            throw new IllegalArgumentException("Response not found for this user and quiz.");
+        }
+        ResponseModel userResponse = responses.get(0);
+
         Map<String, Object> userAnswers = userResponse.getAnswers();
 
         // Build aggregates

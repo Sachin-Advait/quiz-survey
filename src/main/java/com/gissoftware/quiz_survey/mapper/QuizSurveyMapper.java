@@ -26,7 +26,7 @@ public class QuizSurveyMapper {
     }
 
     public QuizzesSurveysDTO mapToDtoWithUser(QuizSurveyModel quiz, String userId) {
-        boolean isParticipated = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isPresent();
+        boolean isParticipated = !responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), userId).isEmpty();
         boolean isMandatory = !isParticipated && Boolean.TRUE.equals(quiz.getIsMandatory());
 
         return QuizzesSurveysDTO.builder()

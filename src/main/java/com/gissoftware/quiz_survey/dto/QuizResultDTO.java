@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -15,10 +16,12 @@ import java.util.Map;
 @NoArgsConstructor
 @AllArgsConstructor
 public class QuizResultDTO {
+    private String id;
     private String username;
     private Integer score;
     private Integer maxScore;
     private Instant submittedAt;
+    private Duration finishTime;
     private Map<String, QuestionAnswerDTO> answers;
 
 
