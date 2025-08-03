@@ -36,13 +36,13 @@ public class SurveyResponseStatsDTO {
         private int invited;
         private int responded;
         private double responseRate;
-        private List<BreakdownByRoleDTO> roles;
+        private List<BreakdownByRoleDTO> position;
     }
 
     @Builder
     @Data
     public static class BreakdownByRoleDTO {
-        private String role;
+        private String position;
         private int invited;
         private int responded;
         private double responseRate;

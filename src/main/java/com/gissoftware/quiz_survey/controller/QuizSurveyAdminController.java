@@ -67,4 +67,11 @@ public class QuizSurveyAdminController {
                 "Survey stats retrieved successfully", stats));
     }
 
+    @GetMapping("/satisfaction-insights/{surveyId}")
+    public ResponseEntity<ApiResponseDTO<SatisfactionInsightResponse>> getSatisfactionInsights(@PathVariable String surveyId) {
+
+        SatisfactionInsightResponse satisfactionInsightResponse = quizSurveyService.getSatisfactionInsights(surveyId);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Survey satisfaction insights retrieved successfully", satisfactionInsightResponse));
+    }
 }

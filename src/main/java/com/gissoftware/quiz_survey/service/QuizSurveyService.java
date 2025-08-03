@@ -243,7 +243,7 @@ public class QuizSurveyService {
                 .orElseThrow(() -> new RuntimeException("Survey not found"));
 
         List<UserModel> invitedUsers = userRepository.findByUsernameIn(survey.getTargetedUsers());
-        
+
         int totalInvited = invitedUsers.size();
         int totalResponded = responses.size();
         double overallRate = calculateRate(totalResponded, totalInvited);
@@ -320,8 +320,7 @@ public class QuizSurveyService {
         return invited == 0 ? 0.0 : Math.round((responded * 10000.0 / invited)) / 100.0;
     }
 
-// ========== GENERIC BREAKDOWN ==========
-
+    // ========== GENERIC BREAKDOWN ==========
     private List<SurveyResponseStatsDTO.BreakdownByRegionDTO> buildHierarchicalBreakdown(List<UserModel> invitedUsers, List<ResponseModel> responses) {
         Map<String, Map<String, Map<String, List<UserModel>>>> groupedInvited = invitedUsers.stream()
                 .collect(Collectors.groupingBy(
@@ -329,22 +328,16 @@ public class QuizSurveyService {
                         Collectors.groupingBy(
                                 u -> safeEnum(u.getOutlet()),
                                 Collectors.groupingBy(
-                                        u -> safeEnum(u.getRole())
+                                        u -> safeString(u.getPosition())
                                 )
                         )
-                ));
-
-        Map<String, Set<String>> respondedUserIds = responses.stream()
-                .map(ResponseModel::getUserId)
-                .collect(Collectors.groupingBy(
-                        id -> userRepository.findById(id).map(u -> safeString(u.getRegion())).orElse("Unknown"),
-                        Collectors.mapping(Function.identity(), Collectors.toSet())
                 ));
 
         return groupedInvited.entrySet().stream()
                 .map(regionEntry -> {
                     String region = regionEntry.getKey();
                     Map<String, Map<String, List<UserModel>>> outletMap = regionEntry.getValue();
+                    System.out.println(outletMap);
 
                     List<SurveyResponseStatsDTO.BreakdownByOutletDTO> outletDTOs = outletMap.entrySet().stream()
                             .map(outletEntry -> {
@@ -374,5 +367,60 @@ public class QuizSurveyService {
                 }).collect(Collectors.toList());
     }
 
+    public SatisfactionInsightResponse getSatisfactionInsights(String surveyId) {
+        QuizSurveyModel survey = quizSurveyRepo.findById(surveyId)
+                .orElseThrow(() -> new RuntimeException("Survey not found"));
 
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(surveyId);
+
+        // Extract rating-type questions from survey definition
+        List<SurveyDefinition.Element> ratingQuestions = survey.getDefinitionJson().getPages().stream()
+                .flatMap(page -> page.getElements().stream())
+                .filter(element -> "rating".equalsIgnoreCase(element.getType()))
+                .toList();
+
+        Map<String, List<Integer>> questionRatingsMap = new HashMap<>();
+
+        for (SurveyDefinition.Element q : ratingQuestions) {
+            questionRatingsMap.put(q.getTitle(), new ArrayList<>());
+        }
+
+        for (ResponseModel response : responses) {
+            Map<String, Object> answers = response.getAnswers();
+
+            for (SurveyDefinition.Element q : ratingQuestions) {
+                Object val = answers.get(q.getName());
+                if (val instanceof Number) {
+                    questionRatingsMap.get(q.getTitle()).add(((Number) val).intValue());
+                }
+            }
+        }
+
+        // Build distribution
+        List<SatisfactionInsightResponse.QuestionDistribution> distributions = new ArrayList<>();
+        for (Map.Entry<String, List<Integer>> entry : questionRatingsMap.entrySet()) {
+            Map<Integer, Integer> distribution = new HashMap<>();
+            for (int i = 1; i <= 5; i++) distribution.put(i, 0);
+
+            for (Integer rating : entry.getValue()) {
+                distribution.put(rating, distribution.getOrDefault(rating, 0) + 1);
+            }
+
+            distributions.add(SatisfactionInsightResponse.QuestionDistribution.builder()
+                    .question(entry.getKey())
+                    .distribution(distribution)
+                    .build());
+        }
+
+        double avg = questionRatingsMap.values().stream()
+                .flatMap(Collection::stream)
+                .mapToInt(Integer::intValue)
+                .average().orElse(0.0);
+
+        return SatisfactionInsightResponse.builder()
+                .title("Satisfaction Insights")
+                .averageSatisfactionBySurveyType(Map.of(survey.getTitle(), avg))
+                .scoreDistributionPerQuestion(distributions)
+                .build();
+    }
 }

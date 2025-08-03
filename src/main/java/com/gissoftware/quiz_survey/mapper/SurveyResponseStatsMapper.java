@@ -16,22 +16,22 @@ public class SurveyResponseStatsMapper {
                 .build();
     }
 
-    public SurveyResponseStatsDTO.BreakdownByRoleDTO toRoleBreakdown(String role, int responded, int invited, double rate) {
+    public SurveyResponseStatsDTO.BreakdownByRoleDTO toRoleBreakdown(String position, int responded, int invited, double rate) {
         return SurveyResponseStatsDTO.BreakdownByRoleDTO.builder()
-                .role(role)
+                .position(position)
                 .responded(responded)
                 .invited(invited)
                 .responseRate(rate)
                 .build();
     }
 
-    public SurveyResponseStatsDTO.BreakdownByOutletDTO toOutletBreakdown(String outlet, int responded, int invited, double rate, List<SurveyResponseStatsDTO.BreakdownByRoleDTO> roles) {
+    public SurveyResponseStatsDTO.BreakdownByOutletDTO toOutletBreakdown(String outlet, int responded, int invited, double rate, List<SurveyResponseStatsDTO.BreakdownByRoleDTO> position) {
         return SurveyResponseStatsDTO.BreakdownByOutletDTO.builder()
                 .outlet(outlet)
                 .responded(responded)
                 .invited(invited)
                 .responseRate(rate)
-                .roles(roles)
+                .position(position)
                 .build();
     }
 
