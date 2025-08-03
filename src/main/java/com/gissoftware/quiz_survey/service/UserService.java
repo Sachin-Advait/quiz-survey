@@ -28,6 +28,7 @@ public class UserService {
                 .createdAt(user.getCreatedAt())
                 .region(user.getRegion())
                 .outlet(user.getOutlet())
+                .position(user.getPosition())
                 .build();
     }
 

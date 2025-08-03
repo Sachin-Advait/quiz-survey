@@ -9,6 +9,8 @@ import java.util.Optional;
 public interface UserRepository extends MongoRepository<UserModel, String> {
     Optional<UserModel> findByUsername(String username);
 
+    List<UserModel> findByUsernameIn(List<String> usernames);
+
     List<UserModel> findByRegion(String region);
 
     List<UserModel> findByOutlet(String outlet);

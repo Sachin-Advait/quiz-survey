@@ -19,5 +19,6 @@ public class UserResponseDTO {
     private UserRole role;
     private String region;
     private Outlet outlet;
+    private String position;
     private Instant createdAt;
 }

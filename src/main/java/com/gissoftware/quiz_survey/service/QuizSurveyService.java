@@ -242,8 +242,8 @@ public class QuizSurveyService {
         QuizSurveyModel survey = quizSurveyRepo.findById(surveyId)
                 .orElseThrow(() -> new RuntimeException("Survey not found"));
 
-        List<UserModel> invitedUsers = userRepository.findAllById(survey.getTargetedUsers());
-
+        List<UserModel> invitedUsers = userRepository.findByUsernameIn(survey.getTargetedUsers());
+        
         int totalInvited = invitedUsers.size();
         int totalResponded = responses.size();
         double overallRate = calculateRate(totalResponded, totalInvited);

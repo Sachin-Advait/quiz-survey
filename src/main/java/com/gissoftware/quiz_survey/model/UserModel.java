@@ -19,13 +19,14 @@ import java.time.Instant;
 public class UserModel {
     @Id
     private String id;
-    @Indexed(unique = true)
     @NonNull
+    @Indexed(unique = true)
     private String username;
     private String password;
     private UserRole role;
     private String region;
     private Outlet outlet;
+    private String position;
 
     @CreatedDate
     private Instant createdAt;
