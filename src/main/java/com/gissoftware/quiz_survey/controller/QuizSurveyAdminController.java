@@ -1,8 +1,6 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
-import com.gissoftware.quiz_survey.dto.QuizCompletionStatsDTO;
-import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.service.QuizSurveyService;
 import lombok.RequiredArgsConstructor;
@@ -15,11 +13,11 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class QuizSurveyAdminController {
 
-    private final QuizSurveyService service;
+    private final QuizSurveyService quizSurveyService;
 
     @PostMapping
     public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> createQuizSurvey(@RequestBody QuizSurveyModel model) {
-        QuizSurveyModel created = service.createQuizSurvey(model);
+        QuizSurveyModel created = quizSurveyService.createQuizSurvey(model);
         return ResponseEntity.status(HttpStatus.CREATED).body(new ApiResponseDTO<>(true,
                 "Quiz & survey created successfully", created));
     }
@@ -30,28 +28,43 @@ public class QuizSurveyAdminController {
             @RequestBody QuizSurveyModel updatedModel
     ) {
         updatedModel.setId(id);
-        QuizSurveyModel updated = service.updateQuizSurvey(updatedModel);
+        QuizSurveyModel updated = quizSurveyService.updateQuizSurvey(updatedModel);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz & survey updated successfully", updated));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteQuizSurvey(@PathVariable String id) {
-        service.deleteQuizSurvey(id);
+        quizSurveyService.deleteQuizSurvey(id);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz & survey deleted successfully", null));
     }
 
-    @GetMapping("/insights/{quizSurveyId}")
+    @GetMapping("/quiz-insights/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizInsightsDTO>> getQuizInsights(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
-                "Quiz insights retrieved successfully", service.getQuizInsights(quizSurveyId)));
+                "Quiz insights retrieved successfully", quizSurveyService.getQuizInsights(quizSurveyId)));
     }
 
     @GetMapping("/completion-stats/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizCompletionStatsDTO>> getQuizStats(@PathVariable String quizSurveyId) {
-        QuizCompletionStatsDTO stats = service.getQuizCompletionStats(quizSurveyId);
+        QuizCompletionStatsDTO stats = quizSurveyService.getQuizCompletionStats(quizSurveyId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz completion stats retrieved successfully", stats));
     }
+
+    @GetMapping("/survey-insights/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<SurveyResponseStatsDTO>> getSurveyInsights(@PathVariable String quizSurveyId) {
+        SurveyResponseStatsDTO insights = quizSurveyService.getSurveyResponseStats(quizSurveyId);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Survey insights retrieved successfully", insights));
+    }
+
+    @GetMapping("/survey-activity-stats/{id}")
+    public ResponseEntity<ApiResponseDTO<SurveyActivityStatsDTO>> getSurveyActivityStats(@PathVariable String id) {
+        SurveyActivityStatsDTO stats = quizSurveyService.getSurveyActivityStats(id);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Survey stats retrieved successfully", stats));
+    }
+
 }

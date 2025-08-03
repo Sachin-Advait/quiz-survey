@@ -1,11 +1,9 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
-import com.gissoftware.quiz_survey.dto.QuizCompletionStatsDTO;
-import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
-import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
-import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
+import com.gissoftware.quiz_survey.mapper.SurveyResponseStatsMapper;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.SurveyDefinition;
@@ -16,10 +14,10 @@ import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -30,6 +28,7 @@ public class QuizSurveyService {
     private final UserRepository userRepository;
     private final QuizSurveySocketController quizSurveySocketController;
     private final QuizSurveyMapper quizSurveyMapper;
+    private final SurveyResponseStatsMapper surveyResponseStatsMapper;
 
     private static boolean isCorrect(Object correctAnswer, Object userAnswer) {
         boolean correct = false;
@@ -169,6 +168,8 @@ public class QuizSurveyService {
                 Object userAnswer = userAnswers.get(qId);
 
                 boolean isCorrect = isCorrect(correctAnswer, userAnswer);
+
+
                 if (!isCorrect) {
                     incorrectCountPerQuestion.merge(qId, 1, Integer::sum);
                 }
@@ -203,14 +204,13 @@ public class QuizSurveyService {
 
         return QuizInsightsDTO.builder()
                 .averageScore(formattedAverage)
-                .passRate(100.0 * passCount / totalUsers)
-                .failRate(100.0 * (totalUsers - passCount) / totalUsers)
+                .passRate(Double.parseDouble(String.format("%.2f", 100.0 * passCount / totalUsers)))
+                .failRate(Double.parseDouble(String.format("%.2f", 100.0 * (totalUsers - passCount) / totalUsers)))
                 .topScorer(new QuizInsightsDTO.ScorerDTO(top.getUsername(), top.getScore()))
                 .lowestScorer(new QuizInsightsDTO.ScorerDTO(low.getUsername(), low.getScore()))
                 .mostIncorrectQuestions(mostIncorrectQuestions)
                 .build();
     }
-
 
     public QuizCompletionStatsDTO getQuizCompletionStats(String quizId) {
         var quiz = quizSurveyRepo.findById(quizId)
@@ -235,4 +235,144 @@ public class QuizSurveyService {
 
         return new QuizCompletionStatsDTO(totalAssigned, totalCompleted, totalNotCompleted, completionRate);
     }
+
+
+    public SurveyResponseStatsDTO getSurveyResponseStats(String surveyId) {
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(surveyId);
+        QuizSurveyModel survey = quizSurveyRepo.findById(surveyId)
+                .orElseThrow(() -> new RuntimeException("Survey not found"));
+
+        List<UserModel> invitedUsers = userRepository.findAllById(survey.getTargetedUsers());
+
+        int totalInvited = invitedUsers.size();
+        int totalResponded = responses.size();
+        double overallRate = calculateRate(totalResponded, totalInvited);
+
+        List<SurveyResponseStatsDTO.BreakdownByRegionDTO> regionBreakdowns = buildHierarchicalBreakdown(invitedUsers, responses);
+
+        return SurveyResponseStatsDTO.builder()
+                .overall(surveyResponseStatsMapper.toOverallStats(totalInvited, totalResponded, overallRate))
+                .byRegion(regionBreakdowns)
+                .build();
+    }
+
+
+    public SurveyActivityStatsDTO getSurveyActivityStats(String surveyId) {
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(surveyId);
+
+        // Map of userId -> UserModel for efficient lookup
+        Map<String, UserModel> userMap = userRepository
+                .findAllById(responses.stream().map(ResponseModel::getUserId).collect(Collectors.toSet()))
+                .stream()
+                .collect(Collectors.toMap(UserModel::getId, Function.identity()));
+
+        // Count responses per region
+        Map<String, Long> regionCounts = responses.stream()
+                .map(r -> userMap.get(r.getUserId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(
+                        u -> Optional.ofNullable(u.getRegion()).orElse("Unknown"),
+                        Collectors.counting()
+                ));
+
+        // Count responses per outlet
+        Map<String, Long> outletCounts = responses.stream()
+                .map(r -> userMap.get(r.getUserId()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(
+                        u -> Optional.ofNullable(u.getOutlet())
+                                .map(Enum::name)
+                                .orElse("Unknown"),
+                        Collectors.counting()
+                ));
+
+
+        List<SurveyActivityStatsDTO.RegionActivityDTO> sortedRegions = regionCounts.entrySet().stream()
+                .map(e -> new SurveyActivityStatsDTO.RegionActivityDTO(e.getKey(), e.getValue().intValue()))
+                .sorted(Comparator.comparingInt(SurveyActivityStatsDTO.RegionActivityDTO::getResponses).reversed())
+                .toList();
+
+        List<SurveyActivityStatsDTO.OutletActivityDTO> sortedOutlets = outletCounts.entrySet().stream()
+                .map(e -> new SurveyActivityStatsDTO.OutletActivityDTO(e.getKey(), e.getValue().intValue()))
+                .sorted(Comparator.comparingInt(SurveyActivityStatsDTO.OutletActivityDTO::getResponses).reversed())
+                .toList();
+
+        return SurveyActivityStatsDTO.builder()
+                .mostActiveRegions(sortedRegions.stream().limit(3).toList())
+                .leastActiveRegions(sortedRegions.stream().sorted(Comparator.comparingInt(SurveyActivityStatsDTO.RegionActivityDTO::getResponses)).limit(3).toList())
+                .mostActiveOutlets(sortedOutlets.stream().limit(3).toList())
+                .leastActiveOutlets(sortedOutlets.stream().sorted(Comparator.comparingInt(SurveyActivityStatsDTO.OutletActivityDTO::getResponses)).limit(3).toList())
+                .build();
+    }
+
+
+// ========== HELPERS ==========
+
+    private <T> String safeString(String value) {
+        return value != null && !value.trim().isEmpty() ? value : "Unknown";
+    }
+
+    private <T extends Enum<?>> String safeEnum(T value) {
+        return value != null ? value.name() : "Unknown";
+    }
+
+    private double calculateRate(int responded, int invited) {
+        return invited == 0 ? 0.0 : Math.round((responded * 10000.0 / invited)) / 100.0;
+    }
+
+// ========== GENERIC BREAKDOWN ==========
+
+    private List<SurveyResponseStatsDTO.BreakdownByRegionDTO> buildHierarchicalBreakdown(List<UserModel> invitedUsers, List<ResponseModel> responses) {
+        Map<String, Map<String, Map<String, List<UserModel>>>> groupedInvited = invitedUsers.stream()
+                .collect(Collectors.groupingBy(
+                        u -> safeString(u.getRegion()),
+                        Collectors.groupingBy(
+                                u -> safeEnum(u.getOutlet()),
+                                Collectors.groupingBy(
+                                        u -> safeEnum(u.getRole())
+                                )
+                        )
+                ));
+
+        Map<String, Set<String>> respondedUserIds = responses.stream()
+                .map(ResponseModel::getUserId)
+                .collect(Collectors.groupingBy(
+                        id -> userRepository.findById(id).map(u -> safeString(u.getRegion())).orElse("Unknown"),
+                        Collectors.mapping(Function.identity(), Collectors.toSet())
+                ));
+
+        return groupedInvited.entrySet().stream()
+                .map(regionEntry -> {
+                    String region = regionEntry.getKey();
+                    Map<String, Map<String, List<UserModel>>> outletMap = regionEntry.getValue();
+
+                    List<SurveyResponseStatsDTO.BreakdownByOutletDTO> outletDTOs = outletMap.entrySet().stream()
+                            .map(outletEntry -> {
+                                String outlet = outletEntry.getKey();
+                                Map<String, List<UserModel>> roleMap = outletEntry.getValue();
+
+                                List<SurveyResponseStatsDTO.BreakdownByRoleDTO> roleDTOs = roleMap.entrySet().stream()
+                                        .map(roleEntry -> {
+                                            String role = roleEntry.getKey();
+                                            List<UserModel> roleUsers = roleEntry.getValue();
+                                            int invited = roleUsers.size();
+                                            int responded = (int) roleUsers.stream()
+                                                    .map(UserModel::getId)
+                                                    .filter(id -> responses.stream().anyMatch(r -> r.getUserId().equals(id)))
+                                                    .count();
+                                            return surveyResponseStatsMapper.toRoleBreakdown(role, responded, invited, calculateRate(responded, invited));
+                                        }).collect(Collectors.toList());
+
+                                int outletInvited = roleMap.values().stream().mapToInt(List::size).sum();
+                                int outletResponded = roleDTOs.stream().mapToInt(SurveyResponseStatsDTO.BreakdownByRoleDTO::getResponded).sum();
+                                return surveyResponseStatsMapper.toOutletBreakdown(outlet, outletResponded, outletInvited, calculateRate(outletResponded, outletInvited), roleDTOs);
+                            }).collect(Collectors.toList());
+
+                    int regionInvited = outletDTOs.stream().mapToInt(SurveyResponseStatsDTO.BreakdownByOutletDTO::getInvited).sum();
+                    int regionResponded = outletDTOs.stream().mapToInt(SurveyResponseStatsDTO.BreakdownByOutletDTO::getResponded).sum();
+                    return surveyResponseStatsMapper.toRegionBreakdown(region, regionResponded, regionInvited, calculateRate(regionResponded, regionInvited), outletDTOs);
+                }).collect(Collectors.toList());
+    }
+
+
 }

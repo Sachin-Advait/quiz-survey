@@ -1,4 +1,4 @@
-package com.gissoftware.quiz_survey.service;
+package com.gissoftware.quiz_survey.Utils;
 
 import java.util.Map;
 
