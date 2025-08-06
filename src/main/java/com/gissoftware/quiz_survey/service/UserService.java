@@ -20,7 +20,7 @@ public class UserService {
 
     public UserResponseDTO toDto(UserModel user) {
         return UserResponseDTO.builder()
-                .id(user.getStaffId())
+                .staffId(user.getStaffId())
                 .username(user.getUsername())
                 .role(user.getRole())
                 .createdAt(user.getCreatedAt())
@@ -32,16 +32,15 @@ public class UserService {
     }
 
     public UserModel syncUser(UserModel user) {
-        userRepository.findByUsername(user.getStaffId())
+        userRepository.findByStaffId(user.getStaffId())
                 .ifPresent(u -> {
-                    throw new RuntimeException("Username already exists");
+                    throw new RuntimeException("Staff ID already exists");
                 });
 
         // Set default role if not provided
         if (user.getRole() == null) {
             user.setRole(UserRole.USER);
         }
-
         return userRepository.save(user);
     }
 

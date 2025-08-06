@@ -13,7 +13,7 @@ import java.time.Instant;
 @AllArgsConstructor
 @Builder
 public class UserResponseDTO {
-    private String id;
+    private String staffId;
     private String username;
     private UserRole role;
     private String region;
