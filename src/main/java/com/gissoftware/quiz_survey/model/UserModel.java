@@ -25,7 +25,6 @@ public class UserModel {
     @Indexed(unique = true)
     private String staffId;
     private String username;
-    private String lastLoginTime;
     private UserRole role;
     private String region;
     private String outlet;
