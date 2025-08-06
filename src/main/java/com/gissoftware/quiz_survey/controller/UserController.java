@@ -29,6 +29,13 @@ public class UserController {
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Retrieved all users", response));
     }
 
+    @PostMapping("/sync-user")
+    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> syncUser(@RequestBody UserModel user) {
+        UserModel registeredUser = userService.syncUser(user);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Sync user successful", userService.toDto(registeredUser))
+        );
+    }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<UserResponseDTO>> updateUser(

@@ -6,7 +6,6 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.model.UserRole;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,27 +17,25 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
 
     public UserResponseDTO toDto(UserModel user) {
         return UserResponseDTO.builder()
-                .id(user.getId())
+                .id(user.getStaffId())
                 .username(user.getUsername())
                 .role(user.getRole())
                 .createdAt(user.getCreatedAt())
                 .region(user.getRegion())
                 .outlet(user.getOutlet())
                 .position(user.getPosition())
+                .lastLoginTime(user.getLastLoginTime())
                 .build();
     }
 
-    public UserModel register(UserModel user) {
-        userRepository.findByUsername(user.getUsername())
+    public UserModel syncUser(UserModel user) {
+        userRepository.findByUsername(user.getStaffId())
                 .ifPresent(u -> {
                     throw new RuntimeException("Username already exists");
                 });
-
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
         // Set default role if not provided
         if (user.getRole() == null) {
@@ -46,13 +43,6 @@ public class UserService {
         }
 
         return userRepository.save(user);
-    }
-
-
-    public UserModel login(String username, String rawPassword) {
-        return userRepository.findByUsername(username)
-                .filter(user -> passwordEncoder.matches(rawPassword, user.getPassword()))
-                .orElseThrow(() -> new RuntimeException("Invalid username or password"));
     }
 
     public List<UserResponseDTO> getAllUsers(String region, String outlet) {

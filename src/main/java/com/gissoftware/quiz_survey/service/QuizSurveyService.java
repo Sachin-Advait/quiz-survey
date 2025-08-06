@@ -264,7 +264,7 @@ public class QuizSurveyService {
         Map<String, UserModel> userMap = userRepository
                 .findAllById(responses.stream().map(ResponseModel::getUserId).collect(Collectors.toSet()))
                 .stream()
-                .collect(Collectors.toMap(UserModel::getId, Function.identity()));
+                .collect(Collectors.toMap(UserModel::getStaffId, Function.identity()));
 
         // Count responses per region
         Map<String, Long> regionCounts = responses.stream()
@@ -280,9 +280,13 @@ public class QuizSurveyService {
                 .map(r -> userMap.get(r.getUserId()))
                 .filter(Objects::nonNull)
                 .collect(Collectors.groupingBy(
-                        u -> Optional.ofNullable(u.getOutlet())
-                                .map(Enum::name)
-                                .orElse("Unknown"),
+                        u -> {
+                            if (u.getOutlet() != null) {
+                                return u.getOutlet();
+                            } else {
+                                return "Unknown";
+                            }
+                        },
                         Collectors.counting()
                 ));
 
@@ -326,7 +330,7 @@ public class QuizSurveyService {
                 .collect(Collectors.groupingBy(
                         u -> safeString(u.getRegion()),
                         Collectors.groupingBy(
-                                u -> safeEnum(u.getOutlet()),
+                                u -> safeString(u.getOutlet()),
                                 Collectors.groupingBy(
                                         u -> safeString(u.getPosition())
                                 )
@@ -350,7 +354,7 @@ public class QuizSurveyService {
                                             List<UserModel> roleUsers = roleEntry.getValue();
                                             int invited = roleUsers.size();
                                             int responded = (int) roleUsers.stream()
-                                                    .map(UserModel::getId)
+                                                    .map(UserModel::getStaffId)
                                                     .filter(id -> responses.stream().anyMatch(r -> r.getUserId().equals(id)))
                                                     .count();
                                             return surveyResponseStatsMapper.toRoleBreakdown(role, responded, invited, calculateRate(responded, invited));

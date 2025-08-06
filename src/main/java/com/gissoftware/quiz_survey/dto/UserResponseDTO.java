@@ -1,6 +1,5 @@
 package com.gissoftware.quiz_survey.dto;
 
-import com.gissoftware.quiz_survey.model.Outlet;
 import com.gissoftware.quiz_survey.model.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +17,8 @@ public class UserResponseDTO {
     private String username;
     private UserRole role;
     private String region;
-    private Outlet outlet;
+    private String outlet;
     private String position;
+    private String lastLoginTime;
     private Instant createdAt;
 }
