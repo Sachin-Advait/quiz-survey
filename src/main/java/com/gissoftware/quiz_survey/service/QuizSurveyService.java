@@ -85,14 +85,12 @@ public class QuizSurveyService {
                     .toList();
         }
 
-        UserModel user = userRepository.findById(userId)
+        userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
-
-        String username = user.getUsername();
 
         quizzes = quizSurveyRepo.findAll().stream()
                 .filter(quiz -> quiz.getTargetedUsers() != null &&
-                        quiz.getTargetedUsers().contains(username))
+                        quiz.getTargetedUsers().contains(userId))
                 .toList();
 
         return quizzes.stream()
@@ -221,7 +219,7 @@ public class QuizSurveyService {
 
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizId);
         List<String> completedUserIds = responses.stream()
-                .map(ResponseModel::getUsername)
+                .map(ResponseModel::getUserId)
                 .distinct()
                 .toList();
 
@@ -242,7 +240,7 @@ public class QuizSurveyService {
         QuizSurveyModel survey = quizSurveyRepo.findById(surveyId)
                 .orElseThrow(() -> new RuntimeException("Survey not found"));
 
-        List<UserModel> invitedUsers = userRepository.findByUsernameIn(survey.getTargetedUsers());
+        List<UserModel> invitedUsers = userRepository.findAllById(survey.getTargetedUsers());
 
         int totalInvited = invitedUsers.size();
         int totalResponded = responses.size();
