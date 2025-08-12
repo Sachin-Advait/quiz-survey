@@ -4,7 +4,10 @@ import com.gissoftware.quiz_survey.dto.AnnouncementWithReadStatus;
 import com.gissoftware.quiz_survey.model.Announcement;
 import com.gissoftware.quiz_survey.model.AnnouncementRead;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
-import com.gissoftware.quiz_survey.repository.*;
+import com.gissoftware.quiz_survey.repository.AnnouncementReadRepository;
+import com.gissoftware.quiz_survey.repository.AnnouncementRepository;
+import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
+import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +24,6 @@ public class AnnouncementService {
     private final AnnouncementReadRepository readRepo;
     private final QuizSurveyRepository quizSurveyRepository;
     private final UserRepository userRepository;
-    private final FCMTokenRepository fcmTokenRepository;
-    private final FirebaseNotificationService notificationService;
 
     public Announcement create(String quizSurveyId, String message) {
 
@@ -36,12 +37,6 @@ public class AnnouncementService {
                 .title(quizSurveyModel.getTitle())
                 .message(message)
                 .build());
-
-        // Send FCM to all registered tokens
-//        List<FCMToken> tokens = fcmTokenRepository.findAll();
-//        for (FCMToken token : tokens) {
-//            notificationService.sendNotification(token.getToken(), announcement.getTitle(), announcement.getMessage());
-//        }
     }
 
 

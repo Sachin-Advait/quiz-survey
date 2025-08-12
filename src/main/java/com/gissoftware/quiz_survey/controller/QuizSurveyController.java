@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/quiz-survey")
+@RequestMapping("/api/user/quiz-survey")
 @RequiredArgsConstructor
 public class QuizSurveyController {
 

@@ -16,7 +16,7 @@ public class ResponseController {
 
     private final ResponseService responseService;
 
-    @PostMapping("/submit-survey/{id}")
+    @PostMapping("/user/submit-survey/{id}")
     public ResponseEntity<ApiResponseDTO<ResponseModel>> submitResponse(
             @PathVariable String id,
             @RequestBody SurveySubmissionRequest request
@@ -27,7 +27,7 @@ public class ResponseController {
     }
 
 
-    @GetMapping("/quiz-summary/{quizSurveyId}")
+    @GetMapping("/user/quiz-summary/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizScoreSummaryDTO>> getSummary(@PathVariable String quizSurveyId) {
 
         QuizScoreSummaryDTO response = responseService.getScoreSummary(quizSurveyId);
@@ -35,7 +35,7 @@ public class ResponseController {
                 "Response submitted successfully", response));
     }
 
-    @GetMapping("/responses/by-user/{userId}")
+    @GetMapping("/user/responses/by-user/{userId}")
     public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getAllResponsesByUserId(@PathVariable String userId) {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true,
@@ -43,7 +43,7 @@ public class ResponseController {
         );
     }
 
-    @GetMapping("/quiz-result/{quizSurveyId}")
+    @GetMapping("/user/quiz-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizResultDTO>> getQuizResultByUserId(
             @PathVariable String quizSurveyId,
             @RequestParam String userId
@@ -63,7 +63,7 @@ public class ResponseController {
         );
     }
 
-    @GetMapping("/admin/survey-results/{quizSurveyId}")
+    @GetMapping("/admin/survey-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultsAdmin(@PathVariable String quizSurveyId) {
         List<SurveyResultDTO> results;
 
@@ -82,7 +82,7 @@ public class ResponseController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/survey-results/{quizSurveyId}")
+    @GetMapping("/user/survey-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultByUserId(
             @PathVariable String quizSurveyId,
             @RequestParam String userId) {
