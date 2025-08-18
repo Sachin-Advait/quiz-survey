@@ -262,7 +262,7 @@ public class QuizSurveyService {
         Map<String, UserModel> userMap = userRepository
                 .findAllById(responses.stream().map(ResponseModel::getUserId).collect(Collectors.toSet()))
                 .stream()
-                .collect(Collectors.toMap(UserModel::getStaffId, Function.identity()));
+                .collect(Collectors.toMap(UserModel::getId, Function.identity()));
 
         // Count responses per region
         Map<String, Long> regionCounts = responses.stream()
@@ -307,23 +307,9 @@ public class QuizSurveyService {
                 .build();
     }
 
-
-// ========== HELPERS ==========
-
-    private <T> String safeString(String value) {
-        return value != null && !value.trim().isEmpty() ? value : "Unknown";
-    }
-
-    private <T extends Enum<?>> String safeEnum(T value) {
-        return value != null ? value.name() : "Unknown";
-    }
-
-    private double calculateRate(int responded, int invited) {
-        return invited == 0 ? 0.0 : Math.round((responded * 10000.0 / invited)) / 100.0;
-    }
-
     // ========== GENERIC BREAKDOWN ==========
-    private List<SurveyResponseStatsDTO.BreakdownByRegionDTO> buildHierarchicalBreakdown(List<UserModel> invitedUsers, List<ResponseModel> responses) {
+    private List<SurveyResponseStatsDTO.BreakdownByRegionDTO> buildHierarchicalBreakdown(
+            List<UserModel> invitedUsers, List<ResponseModel> responses) {
         Map<String, Map<String, Map<String, List<UserModel>>>> groupedInvited = invitedUsers.stream()
                 .collect(Collectors.groupingBy(
                         u -> safeString(u.getRegion()),
@@ -352,7 +338,7 @@ public class QuizSurveyService {
                                             List<UserModel> roleUsers = roleEntry.getValue();
                                             int invited = roleUsers.size();
                                             int responded = (int) roleUsers.stream()
-                                                    .map(UserModel::getStaffId)
+                                                    .map(UserModel::getId)
                                                     .filter(id -> responses.stream().anyMatch(r -> r.getUserId().equals(id)))
                                                     .count();
                                             return surveyResponseStatsMapper.toRoleBreakdown(role, responded, invited, calculateRate(responded, invited));
@@ -424,5 +410,18 @@ public class QuizSurveyService {
                 .averageSatisfactionBySurveyType(Map.of(survey.getTitle(), avg))
                 .scoreDistributionPerQuestion(distributions)
                 .build();
+    }
+
+    // ========== HELPERS ==========
+    private <T> String safeString(String value) {
+        return value != null && !value.trim().isEmpty() ? value : "Unknown";
+    }
+
+    private <T extends Enum<?>> String safeEnum(T value) {
+        return value != null ? value.name() : "Unknown";
+    }
+
+    private double calculateRate(int responded, int invited) {
+        return invited == 0 ? 0.0 : Math.round((responded * 10000.0 / invited)) / 100.0;
     }
 }
