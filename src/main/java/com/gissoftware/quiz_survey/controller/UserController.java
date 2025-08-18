@@ -22,9 +22,11 @@ public class UserController {
     @GetMapping
     public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> getAllUsers(
             @RequestParam(required = false) String region,
-            @RequestParam(required = false) String outlet
+            @RequestParam(required = false) String outlet,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size
     ) {
-        List<UserResponseDTO> response = userService.getAllUsers(region, outlet);
+        List<UserResponseDTO> response = userService.getAllUsers(region, outlet, page, size);
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Retrieved all users", response));
     }
 

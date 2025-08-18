@@ -22,4 +22,5 @@ public class QuizSurveyDTO {
     private Integer maxScore;
     private String quizDuration;
     private Instant createdAt;
+    private Integer maxRetake;
 }

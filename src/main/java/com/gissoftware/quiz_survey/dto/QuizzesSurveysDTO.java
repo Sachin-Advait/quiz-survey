@@ -22,4 +22,5 @@ public class QuizzesSurveysDTO {
     private Boolean isParticipated;
     private Boolean isMandatory;
     private Instant createdAt;
+    private Integer maxRetake;
 }

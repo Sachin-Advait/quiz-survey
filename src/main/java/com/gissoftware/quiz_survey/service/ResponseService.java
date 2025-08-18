@@ -35,12 +35,20 @@ public class ResponseService {
 
         // ✅ Check if the user has already submitted a response
         if (qs.getType().equalsIgnoreCase("survey")) {
-            List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId,
-                    request.getUserId());
+            List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, request.getUserId());
             if (!existingResponses.isEmpty()) {
                 throw new IllegalStateException("You have already submitted this survey.");
             }
         }
+
+        if (qs.getType().equalsIgnoreCase("quiz")) {
+            List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId,
+                    request.getUserId());
+            if (existingResponses.size() >= qs.getMaxRetake()) {
+                throw new IllegalStateException("You have reach the limit on this quiz.");
+            }
+        }
+
 
         // Handle response
         return switch (qs.getType().toLowerCase()) {

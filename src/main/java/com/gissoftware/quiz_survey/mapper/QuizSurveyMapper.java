@@ -22,6 +22,7 @@ public class QuizSurveyMapper {
                 .quizTotalDuration(quiz.getQuizTotalDuration())
                 .isAnnounced(quiz.getIsAnnounced())
                 .createdAt(quiz.getCreatedAt())
+                .maxRetake(quiz.getMaxRetake())
                 .build();
     }
 
@@ -40,6 +41,7 @@ public class QuizSurveyMapper {
                 .createdAt(quiz.getCreatedAt())
                 .isParticipated(isParticipated)
                 .isMandatory(isMandatory)
+                .maxRetake(quiz.getMaxRetake())
                 .build();
     }
 

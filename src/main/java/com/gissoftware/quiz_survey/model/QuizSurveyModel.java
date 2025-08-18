@@ -34,6 +34,7 @@ public class QuizSurveyModel {
     private String quizDuration;
     private Boolean isAnnounced;
     private Boolean isMandatory;
+    private Integer maxRetake;
     @Builder.Default
     private List<String> targetedUsers = new ArrayList<>();
     @CreatedDate

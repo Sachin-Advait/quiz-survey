@@ -70,6 +70,7 @@ public class QuizSurveyService {
                 .maxScore(quiz.getMaxScore())
                 .answerKey(quiz.getAnswerKey())
                 .createdAt(quiz.getCreatedAt())
+                .maxRetake(quiz.getMaxRetake())
                 .build();
     }
 
@@ -114,6 +115,7 @@ public class QuizSurveyService {
         if (model.getIsAnnounced() != null) existing.setIsAnnounced(model.getIsAnnounced());
         if (model.getIsMandatory() != null) existing.setIsMandatory(model.getIsMandatory());
         if (!model.getTargetedUsers().isEmpty()) existing.setTargetedUsers(model.getTargetedUsers());
+        if (model.getMaxRetake() != null) existing.setMaxRetake(model.getMaxRetake());
 
         return quizSurveyRepo.save(existing);
     }

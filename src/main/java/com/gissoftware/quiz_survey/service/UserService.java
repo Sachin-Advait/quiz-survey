@@ -5,6 +5,9 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.model.UserRole;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -44,20 +47,21 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public List<UserResponseDTO> getAllUsers(String region, String outlet) {
-        List<UserModel> users;
+    public List<UserResponseDTO> getAllUsers(String region, String outlet, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<UserModel> users;
 
         if (region != null && outlet != null) {
-            users = userRepository.findByRegionAndOutlet(region, outlet);
+            users = userRepository.findByRegionAndOutlet(region, outlet, pageable);
         } else if (region != null) {
-            users = userRepository.findByRegion(region);
+            users = userRepository.findByRegion(region, pageable);
         } else if (outlet != null) {
-            users = userRepository.findByOutlet(outlet);
+            users = userRepository.findByOutlet(outlet, pageable);
         } else {
-            users = userRepository.findAll();
+            users = userRepository.findAll(pageable);
         }
 
-        return users.stream()
+        return users.getContent().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }
