@@ -55,7 +55,7 @@ public class QuizSurveyAdminController {
 
     @GetMapping("/survey-insights/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<SurveyResponseStatsDTO>> getSurveyInsights(@PathVariable String quizSurveyId) {
-        SurveyResponseStatsDTO insights = quizSurveyService.getSurveyResponseStats(quizSurveyId);
+        SurveyResponseStatsDTO insights = quizSurveyService.getSurveyInsightStats(quizSurveyId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Survey insights retrieved successfully", insights));
     }
@@ -73,5 +73,13 @@ public class QuizSurveyAdminController {
         SatisfactionInsightResponse satisfactionInsightResponse = quizSurveyService.getSatisfactionInsights(surveyId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Survey satisfaction insights retrieved successfully", satisfactionInsightResponse));
+    }
+
+    @GetMapping("/segmentation/{surveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizResponseByRegionDTO>> getQuizResponseByRegion(@PathVariable String surveyId) {
+        QuizResponseByRegionDTO data = quizSurveyService.getQuizResponseByRegion(surveyId);
+
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Quiz segmentation retrieved successfully", data));
     }
 }

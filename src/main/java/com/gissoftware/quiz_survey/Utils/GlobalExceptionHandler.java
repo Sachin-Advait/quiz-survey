@@ -1,4 +1,4 @@
-package com.gissoftware.quiz_survey.exception;
+package com.gissoftware.quiz_survey.Utils;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
 import org.springframework.http.HttpStatus;
