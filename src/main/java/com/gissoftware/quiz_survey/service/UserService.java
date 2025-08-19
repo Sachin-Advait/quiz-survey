@@ -47,21 +47,36 @@ public class UserService {
         return userRepository.save(user);
     }
 
-    public List<UserResponseDTO> getAllUsers(String region, String outlet, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<UserModel> users;
+    public List<UserResponseDTO> getAllUsers(String region, String outlet, Integer page, Integer size) {
+        List<UserModel> users;
 
-        if (region != null && outlet != null) {
-            users = userRepository.findByRegionAndOutlet(region, outlet, pageable);
-        } else if (region != null) {
-            users = userRepository.findByRegion(region, pageable);
-        } else if (outlet != null) {
-            users = userRepository.findByOutlet(outlet, pageable);
+        if (page != null && size != null) {
+            Pageable pageable = PageRequest.of(page, size);
+            Page<UserModel> pagedUsers;
+
+            if (region != null && outlet != null) {
+                pagedUsers = userRepository.findByRegionAndOutlet(region, outlet, pageable);
+            } else if (region != null) {
+                pagedUsers = userRepository.findByRegion(region, pageable);
+            } else if (outlet != null) {
+                pagedUsers = userRepository.findByOutlet(outlet, pageable);
+            } else {
+                pagedUsers = userRepository.findAll(pageable);
+            }
+            users = pagedUsers.getContent();
         } else {
-            users = userRepository.findAll(pageable);
+            if (region != null && outlet != null) {
+                users = userRepository.findByRegionAndOutlet(region, outlet);
+            } else if (region != null) {
+                users = userRepository.findByRegion(region);
+            } else if (outlet != null) {
+                users = userRepository.findByOutlet(outlet);
+            } else {
+                users = userRepository.findAll();
+            }
         }
 
-        return users.getContent().stream()
+        return users.stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
     }

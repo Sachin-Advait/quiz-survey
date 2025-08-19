@@ -9,6 +9,7 @@ import java.util.List;
 @Data
 public class SurveyResponseStatsDTO {
     private OverallStatsDTO overall;
+    private String title;
     private List<BreakdownByRegionDTO> byRegion;
 
     @Builder

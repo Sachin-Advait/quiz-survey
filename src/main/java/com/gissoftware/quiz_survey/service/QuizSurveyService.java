@@ -202,6 +202,7 @@ public class QuizSurveyService {
         double formattedAverage = Math.round(average * 100.0) / 100.0;
 
         return QuizInsightsDTO.builder()
+                .title(quiz.getTitle())
                 .averageScore(formattedAverage)
                 .passRate(Double.parseDouble(String.format("%.2f", 100.0 * passCount / totalUsers)))
                 .failRate(Double.parseDouble(String.format("%.2f", 100.0 * (totalUsers - passCount) / totalUsers)))
@@ -400,6 +401,7 @@ public class QuizSurveyService {
         List<SurveyResponseStatsDTO.BreakdownByRegionDTO> regionBreakdowns = buildHierarchicalBreakdown(invitedUsers, responses);
 
         return SurveyResponseStatsDTO.builder()
+                .title(survey.getTitle())
                 .overall(surveyResponseStatsMapper.toOverallStats(totalInvited, totalResponded, overallRate))
                 .byRegion(regionBreakdowns)
                 .build();

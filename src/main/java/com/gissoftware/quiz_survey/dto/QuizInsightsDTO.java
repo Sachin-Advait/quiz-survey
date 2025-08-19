@@ -10,6 +10,7 @@ import java.util.List;
 @Data
 @Builder
 public class QuizInsightsDTO {
+    private String title;
     private double averageScore;
     private double passRate;
     private double failRate;

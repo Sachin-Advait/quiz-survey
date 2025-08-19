@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends MongoRepository<UserModel, String> {
@@ -16,5 +17,10 @@ public interface UserRepository extends MongoRepository<UserModel, String> {
 
     Page<UserModel> findByOutlet(String outlet, Pageable pageable);
 
+    List<UserModel> findByRegion(String region);
+
+    List<UserModel> findByOutlet(String outlet);
+
+    List<UserModel> findByRegionAndOutlet(String region, String outlet);
 }
 
