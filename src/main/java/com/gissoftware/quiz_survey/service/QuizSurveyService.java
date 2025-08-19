@@ -182,6 +182,7 @@ public class QuizSurveyService {
                 .toList();
 
         List<QuizInsightsDTO.MostIncorrectQuestionDTO> mostIncorrectQuestions = sortedIncorrect.stream()
+                .limit(5)
                 .map(entry -> {
                     String questionId = entry.getKey();
 

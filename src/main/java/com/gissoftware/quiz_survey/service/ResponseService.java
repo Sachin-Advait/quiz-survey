@@ -99,10 +99,21 @@ public class ResponseService {
             throw new IllegalArgumentException("No responses found for quiz/survey: " + quizSurveyId);
         }
 
-        int totalAttempts = responses.size();
+        // ✅ Pick only the best attempt per user
+        Map<String, ResponseModel> bestAttempts = responses.stream()
+                .filter(r -> r.getScore() != null)
+                .collect(Collectors.toMap(
+                        ResponseModel::getUserId,
+                        r -> r,
+                        (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2 // keep higher score
+                ));
+
+        Collection<ResponseModel> uniqueResponses = bestAttempts.values();
+
+        int totalAttempts = uniqueResponses.size();
         int totalScore = 0, highestScore = 0, maxScore = 0;
 
-        for (ResponseModel r : responses) {
+        for (ResponseModel r : uniqueResponses) {
             if (r.getScore() != null) {
                 totalScore += r.getScore();
                 highestScore = Math.max(highestScore, r.getScore());
@@ -114,14 +125,15 @@ public class ResponseService {
 
         double avgScore = (double) totalScore / totalAttempts;
 
-        // Get top 3 scorers
-        List<Map<String, Object>> topScorers = responses.stream()
+        // ✅ Get top 3 scorers (unique users only)
+        List<Map<String, Object>> topScorers = uniqueResponses.stream()
                 .filter(r -> r.getScore() != null)
                 .sorted((a, b) -> b.getScore().compareTo(a.getScore()))
                 .limit(3)
                 .map(r -> {
                     Map<String, Object> map = new HashMap<>();
-                    map.put("username", r.getUsername()); // assuming getUsername() exists
+                    map.put("username", r.getUsername());
+                    map.put("userId", r.getUserId());
                     map.put("score", r.getScore());
                     map.put("maxScore", r.getMaxScore());
                     return map;
@@ -130,7 +142,6 @@ public class ResponseService {
 
         return new QuizScoreSummaryDTO(totalAttempts, avgScore, highestScore, maxScore, topScorers);
     }
-
 
     // Get All Responses by User ID
     public List<ResponseModel> getAllResponsesByUserId(String userId) {
