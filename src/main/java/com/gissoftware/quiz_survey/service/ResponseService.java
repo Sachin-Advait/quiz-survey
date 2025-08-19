@@ -60,7 +60,15 @@ public class ResponseService {
 
 
     private ResponseModel handleQuizResponse(QuizSurveyModel quiz, SurveySubmissionRequest request) {
-        ScoringUtil.ScoringResult result = ScoringUtil.score(request.getAnswers(), quiz.getAnswerKey());
+        Map<String, Object> given = request.getAnswers();
+        Map<String, Object> answerKey = quiz.getAnswerKey();
+
+        Map<String, String> questionTypes = new HashMap<>();
+        quiz.getDefinitionJson().getPages().forEach(page ->
+                page.getElements().forEach(el -> questionTypes.put(el.getTitle(), el.getType()))
+        );
+
+        ScoringUtil.ScoringResult result = ScoringUtil.score(given, answerKey, questionTypes);
 
         UserModel user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid userId"));
@@ -123,7 +131,7 @@ public class ResponseService {
             }
         }
 
-        double avgScore = (double) totalScore / totalAttempts;
+        double avgScore = totalAttempts > 0 ? (double) totalScore / totalAttempts : 0.0;
 
         // ✅ Get top 3 scorers (unique users only)
         List<Map<String, Object>> topScorers = uniqueResponses.stream()

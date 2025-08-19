@@ -1,22 +1,53 @@
 package com.gissoftware.quiz_survey.Utils;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.Map;
 
 public class ScoringUtil {
-    public static ScoringResult score(Map<String, Object> given, Map<String, Object> answerKey) {
+
+    public static ScoringResult score(
+            Map<String, Object> given,
+            Map<String, Object> answerKey,
+            Map<String, String> questionTypes) {
         if (answerKey == null) return new ScoringResult(0, 0);
+
         int max = answerKey.size();
         int correct = 0;
+
         for (var entry : answerKey.entrySet()) {
-            Object ans = given.get(entry.getKey());
-            if (ans != null && ans.equals(entry.getValue())) {
-                correct++;
+            String question = entry.getKey();
+            Object expected = entry.getValue();
+            Object ans = given.get(question);
+            String type = questionTypes.getOrDefault(question, "text");
+
+            if (ans == null) continue;
+
+            switch (type) {
+                case "checkbox" -> {
+                    if (ans instanceof Collection<?> givenSet && expected instanceof Collection<?> expectedSet) {
+                        if (new HashSet<>(givenSet).equals(new HashSet<>(expectedSet))) {
+                            correct++;
+                        }
+                    }
+                }
+                case "boolean" -> {
+                    String normalizedAns = ans.toString().equalsIgnoreCase("true") ? "Yes" : "No";
+                    if (expected.toString().equalsIgnoreCase(normalizedAns)) {
+                        correct++;
+                    }
+                }
+                default -> {
+                    if (ans.toString().equalsIgnoreCase(expected.toString())) {
+                        correct++;
+                    }
+                }
             }
         }
+
         return new ScoringResult(correct, max);
     }
 
-    // ✅ Make the record public
     public record ScoringResult(int score, int max) {
     }
 }
