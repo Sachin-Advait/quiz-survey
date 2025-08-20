@@ -105,4 +105,20 @@ public class ResponseController {
         return ResponseEntity.ok(response);
     }
 
+
+    @GetMapping("/user/responses/staff-invited/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> totalStaffInvited(@PathVariable String quizSurveyId) {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true,
+                        "Staff Invited retrieved successfully", responseService.totalStaffInvited(quizSurveyId))
+        );
+    }
+
+    @GetMapping("/user/responses/response-received/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> totalResponseReceived(@PathVariable String quizSurveyId) {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true,
+                        "Respondents retrieved successfully", responseService.totalResponseReceived(quizSurveyId))
+        );
+    }
 }

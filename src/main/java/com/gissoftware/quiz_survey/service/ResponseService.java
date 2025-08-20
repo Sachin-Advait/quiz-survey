@@ -24,7 +24,7 @@ public class ResponseService {
     private final UserRepository userRepository;
 
     // Store Quiz & Survey Responses
-//    @Transactional
+    // @Transactional
     public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
         userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
@@ -617,5 +617,50 @@ public class ResponseService {
         }
 
         return results;
+    }
+
+    public List<UserResponseDTO> totalStaffInvited(String quizSurveyId) {
+        QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
+
+        List<UserModel> users = userRepository.findAllById(quiz.getTargetedUsers());
+
+        return users.stream()
+                .map(user -> {
+                    return UserResponseDTO.builder()
+                            .id(user.getId())
+                            .staffId(user.getStaffId())
+                            .username(user.getUsername())
+                            .role(user.getRole())
+                            .region(user.getRegion())
+                            .outlet(user.getOutlet())
+                            .position(user.getPosition())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+
+    public List<UserResponseDTO> totalResponseReceived(String quizSurveyId) {
+        QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
+                .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
+
+        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+
+        List<UserModel> users = userRepository.findAllById(responses.stream().map(ResponseModel::getUserId).toList());
+
+        return users.stream()
+                .map(user -> {
+                    return UserResponseDTO.builder()
+                            .id(user.getId())
+                            .staffId(user.getStaffId())
+                            .username(user.getUsername())
+                            .role(user.getRole())
+                            .region(user.getRegion())
+                            .outlet(user.getOutlet())
+                            .position(user.getPosition())
+                            .build();
+                })
+                .collect(Collectors.toList());
     }
 }
