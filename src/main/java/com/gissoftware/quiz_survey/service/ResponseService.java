@@ -641,17 +641,33 @@ public class ResponseService {
     }
 
 
-    public List<UserResponseDTO> totalResponseReceived(String quizSurveyId) {
+    public List<ResponseReceivedDTO> totalResponseReceived(String quizSurveyId) {
         QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
 
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
 
+        Map<String, ResponseModel> highestScoreResponseMap = responses.stream()
+                .collect(Collectors.toMap(
+                        ResponseModel::getUserId,
+                        response -> response,
+                        (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2
+                ));
+
+
         List<UserModel> users = userRepository.findAllById(responses.stream().map(ResponseModel::getUserId).toList());
+
 
         return users.stream()
                 .map(user -> {
-                    return UserResponseDTO.builder()
+                    ResponseModel response = highestScoreResponseMap.get(user.getId());
+
+                    int score = (response.getScore() != null) ? response.getScore() : 0;
+                    int maxScore = (response.getMaxScore() != null) ? response.getMaxScore() : 100;
+
+                    String result = (score >= 0.5 * maxScore) ? "PASS" : "FAIL";
+
+                    return ResponseReceivedDTO.builder()
                             .id(user.getId())
                             .staffId(user.getStaffId())
                             .username(user.getUsername())
@@ -659,7 +675,10 @@ public class ResponseService {
                             .region(user.getRegion())
                             .outlet(user.getOutlet())
                             .position(user.getPosition())
+                            .result(result)
+                            .submittedAt(response.getSubmittedAt())
                             .build();
+
                 })
                 .collect(Collectors.toList());
     }

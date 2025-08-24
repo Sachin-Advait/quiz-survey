@@ -115,7 +115,7 @@ public class ResponseController {
     }
 
     @GetMapping("/user/responses/response-received/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> totalResponseReceived(@PathVariable String quizSurveyId) {
+    public ResponseEntity<ApiResponseDTO<List<ResponseReceivedDTO>>> totalResponseReceived(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true,
                         "Respondents retrieved successfully", responseService.totalResponseReceived(quizSurveyId))
