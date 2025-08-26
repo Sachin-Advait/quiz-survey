@@ -1,6 +1,9 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.*;
+import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
+import com.gissoftware.quiz_survey.dto.SurveySubmissionRequest;
+import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.service.ResponseService;
 import lombok.AllArgsConstructor;
@@ -26,15 +29,6 @@ public class ResponseController {
                 "Response submitted successfully", response));
     }
 
-
-    @GetMapping("/user/quiz-summary/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<QuizScoreSummaryDTO>> getSummary(@PathVariable String quizSurveyId) {
-
-        QuizScoreSummaryDTO response = responseService.getScoreSummary(quizSurveyId);
-        return ResponseEntity.ok(new ApiResponseDTO<>(true,
-                "Response submitted successfully", response));
-    }
-
     @GetMapping("/user/responses/by-user/{userId}")
     public ResponseEntity<ApiResponseDTO<List<ResponseModel>>> getAllResponsesByUserId(@PathVariable String userId) {
         return ResponseEntity.ok(
@@ -42,69 +36,6 @@ public class ResponseController {
                         "Response submitted successfully", responseService.getAllResponsesByUserId(userId))
         );
     }
-
-    @GetMapping("/user/quiz-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<QuizResultDTO>> getQuizResultByUserId(
-            @PathVariable String quizSurveyId,
-            @RequestParam String userId
-    ) {
-        QuizResultDTO response = responseService.getQuizResultByUserId(quizSurveyId, userId);
-
-        return ResponseEntity.ok(new ApiResponseDTO<>(true,
-                "Retrieved submitted response successfully", response));
-
-    }
-
-    @GetMapping("/admin/quiz-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<QuizResultAdminDTO>>> getQuizResultsAdmin(@PathVariable String quizSurveyId) {
-        return ResponseEntity.ok(
-                new ApiResponseDTO<>(true, "Retrieved submitted responses successfully",
-                        responseService.getQuizResultsAdmin(quizSurveyId))
-        );
-    }
-
-    @GetMapping("/user/all-survey-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultsAdmin(
-            @PathVariable String quizSurveyId,
-            @RequestParam(required = false) String userId) {
-        List<SurveyResultDTO> results;
-
-        try {
-            results = responseService.getSurveyResultsAdmin(quizSurveyId, userId);
-        } catch (IllegalArgumentException ex) {
-            ApiResponseDTO<List<SurveyResultDTO>> emptyResponse = new ApiResponseDTO<>(true,
-                    "No survey responses found.", List.of());
-            return ResponseEntity.ok(emptyResponse);
-        }
-        ApiResponseDTO<List<SurveyResultDTO>> response = new ApiResponseDTO<>(
-                true,
-                "Surveys result retrieved successfully",
-                results
-        );
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/user/survey-result/{quizSurveyId}")
-    public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultByUserId(
-            @PathVariable String quizSurveyId,
-            @RequestParam String userId) {
-        List<SurveyResultDTO> results;
-
-        try {
-            results = responseService.getSurveyResultsByUserId(quizSurveyId, userId);
-        } catch (IllegalArgumentException ex) {
-            ApiResponseDTO<List<SurveyResultDTO>> emptyResponse = new ApiResponseDTO<>(true,
-                    "No survey responses found.", List.of());
-            return ResponseEntity.ok(emptyResponse);
-        }
-        ApiResponseDTO<List<SurveyResultDTO>> response = new ApiResponseDTO<>(
-                true,
-                "Surveys result retrieved successfully",
-                results
-        );
-        return ResponseEntity.ok(response);
-    }
-
 
     @GetMapping("/user/responses/staff-invited/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> totalStaffInvited(@PathVariable String quizSurveyId) {

@@ -2,6 +2,8 @@ package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
+import com.gissoftware.quiz_survey.service.AdminQuizService;
+import com.gissoftware.quiz_survey.service.AdminSurveyService;
 import com.gissoftware.quiz_survey.service.QuizSurveyService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 public class QuizSurveyAdminController {
 
     private final QuizSurveyService quizSurveyService;
+    private final AdminQuizService adminQuizService;
+    private final AdminSurveyService adminSurveyService;
 
     @PostMapping
     public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> createQuizSurvey(@RequestBody QuizSurveyModel model) {
@@ -43,26 +47,34 @@ public class QuizSurveyAdminController {
     @GetMapping("/quiz-insights/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizInsightsDTO>> getQuizInsights(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
-                "Quiz insights retrieved successfully", quizSurveyService.getQuizInsights(quizSurveyId)));
+                "Quiz insights retrieved successfully", adminQuizService.getQuizInsights(quizSurveyId)));
     }
 
     @GetMapping("/completion-stats/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizCompletionStatsDTO>> getQuizStats(@PathVariable String quizSurveyId) {
-        QuizCompletionStatsDTO stats = quizSurveyService.getQuizCompletionStats(quizSurveyId);
+        QuizCompletionStatsDTO stats = adminQuizService.getQuizCompletionStats(quizSurveyId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Quiz completion stats retrieved successfully", stats));
     }
 
+    @GetMapping("/segmentation/{surveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizResponseByRegionDTO>> getQuizResponseByRegion(@PathVariable String surveyId) {
+        QuizResponseByRegionDTO data = adminQuizService.getQuizResponseByRegion(surveyId);
+
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Quiz segmentation retrieved successfully", data));
+    }
+
     @GetMapping("/survey-insights/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<SurveyResponseStatsDTO>> getSurveyInsights(@PathVariable String quizSurveyId) {
-        SurveyResponseStatsDTO insights = quizSurveyService.getSurveyInsightStats(quizSurveyId);
+        SurveyResponseStatsDTO insights = adminSurveyService.getSurveyInsightStats(quizSurveyId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Survey insights retrieved successfully", insights));
     }
 
     @GetMapping("/survey-activity-stats/{id}")
     public ResponseEntity<ApiResponseDTO<SurveyActivityStatsDTO>> getSurveyActivityStats(@PathVariable String id) {
-        SurveyActivityStatsDTO stats = quizSurveyService.getSurveyActivityStats(id);
+        SurveyActivityStatsDTO stats = adminSurveyService.getSurveyActivityStats(id);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Survey stats retrieved successfully", stats));
     }
@@ -70,16 +82,10 @@ public class QuizSurveyAdminController {
     @GetMapping("/satisfaction-insights/{surveyId}")
     public ResponseEntity<ApiResponseDTO<SatisfactionInsightResponse>> getSatisfactionInsights(@PathVariable String surveyId) {
 
-        SatisfactionInsightResponse satisfactionInsightResponse = quizSurveyService.getSatisfactionInsights(surveyId);
+        SatisfactionInsightResponse satisfactionInsightResponse = adminSurveyService.getSatisfactionInsights(surveyId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "Survey satisfaction insights retrieved successfully", satisfactionInsightResponse));
     }
 
-    @GetMapping("/segmentation/{surveyId}")
-    public ResponseEntity<ApiResponseDTO<QuizResponseByRegionDTO>> getQuizResponseByRegion(@PathVariable String surveyId) {
-        QuizResponseByRegionDTO data = quizSurveyService.getQuizResponseByRegion(surveyId);
 
-        return ResponseEntity.ok(new ApiResponseDTO<>(true,
-                "Quiz segmentation retrieved successfully", data));
-    }
 }

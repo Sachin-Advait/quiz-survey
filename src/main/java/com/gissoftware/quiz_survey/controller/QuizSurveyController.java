@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.service.QuizSurveyService;
@@ -15,11 +16,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class QuizSurveyController {
 
-    private final QuizSurveyService service;
+    private final QuizSurveyService quizSurveyService;
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<QuizSurveyDTO>> getQuizSurvey(@PathVariable String id) {
-        QuizSurveyDTO quizSurvey = service.getQuizSurvey(id);
+        QuizSurveyDTO quizSurvey = quizSurveyService.getQuizSurvey(id);
         if (quizSurvey == null) {
             return ResponseEntity.status(404).body(
                     new ApiResponseDTO<>(false, "Quiz & survey not found", null)
@@ -33,8 +34,16 @@ public class QuizSurveyController {
     public ResponseEntity<ApiResponseDTO<List<QuizzesSurveysDTO>>> getQuizzesSurveys(
             @RequestParam(required = false) String userId
     ) {
-        List<QuizzesSurveysDTO> surveys = service.getQuizzesSurveys(userId);
+        List<QuizzesSurveysDTO> surveys = quizSurveyService.getQuizzesSurveys(userId);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "All quiz & surveys retrieved successfully", surveys));
+    }
+
+    @GetMapping("/summary/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizScoreSummaryDTO>> getSummary(@PathVariable String quizSurveyId) {
+
+        QuizScoreSummaryDTO response = quizSurveyService.quizScoreSummary(quizSurveyId);
+        return ResponseEntity.ok(new ApiResponseDTO<>(true,
+                "Response submitted successfully", response));
     }
 }
