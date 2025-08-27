@@ -15,7 +15,6 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -86,56 +85,88 @@ public class AdminSurveyService {
                 .build();
     }
 
-    // Get Survey Most and Least Active Regions & Outlet
     public SurveyActivityStatsDTO getSurveyActivityStats(String surveyId) {
+        // Get all responses for the survey
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(surveyId);
 
-        // Map of userId -> UserModel for efficient lookup
-        Map<String, UserModel> userMap = userRepository
-                .findAllById(responses.stream().map(ResponseModel::getUserId).collect(Collectors.toSet()))
-                .stream()
-                .collect(Collectors.toMap(UserModel::getId, Function.identity()));
+        // Get the survey and the invited users
+        Optional<QuizSurveyModel> surveyOpt = quizSurveyRepo.findById(surveyId);
+        if (surveyOpt.isEmpty()) {
+            return SurveyActivityStatsDTO.builder().build();
+        }
+
+        List<UserModel> invitedUsers = userRepository.findAllById(
+                surveyOpt.get().getTargetedUsers()
+        );
+
+        // Map of userId -> number of responses
+        Set<String> respondedUserIds = responses.stream()
+                .map(ResponseModel::getUserId)
+                .collect(Collectors.toSet());
 
         // Count responses per region
-        Map<String, Long> regionCounts = responses.stream()
-                .map(r -> userMap.get(r.getUserId()))
-                .filter(Objects::nonNull)
+        Map<String, Long> regionResponded = invitedUsers.stream()
+                .filter(u -> respondedUserIds.contains(u.getId()))
+                .collect(Collectors.groupingBy(
+                        u -> Optional.ofNullable(u.getRegion()).orElse("Unknown"),
+                        Collectors.counting()
+                ));
+
+        // Count non-responded per region
+        Map<String, Long> regionNonResponded = invitedUsers.stream()
+                .filter(u -> !respondedUserIds.contains(u.getId()))
                 .collect(Collectors.groupingBy(
                         u -> Optional.ofNullable(u.getRegion()).orElse("Unknown"),
                         Collectors.counting()
                 ));
 
         // Count responses per outlet
-        Map<String, Long> outletCounts = responses.stream()
-                .map(r -> userMap.get(r.getUserId()))
-                .filter(Objects::nonNull)
+        Map<String, Long> outletResponded = invitedUsers.stream()
+                .filter(u -> respondedUserIds.contains(u.getId()))
                 .collect(Collectors.groupingBy(
-                        u -> {
-                            if (u.getOutlet() != null) {
-                                return u.getOutlet();
-                            } else {
-                                return "Unknown";
-                            }
-                        },
+                        u -> Optional.ofNullable(u.getOutlet()).orElse("Unknown"),
                         Collectors.counting()
                 ));
 
+        // Count non-responded per outlet
+        Map<String, Long> outletNonResponded = invitedUsers.stream()
+                .filter(u -> !respondedUserIds.contains(u.getId()))
+                .collect(Collectors.groupingBy(
+                        u -> Optional.ofNullable(u.getOutlet()).orElse("Unknown"),
+                        Collectors.counting()
+                ));
 
-        List<SurveyActivityStatsDTO.RegionActivityDTO> sortedRegions = regionCounts.entrySet().stream()
-                .map(e -> new SurveyActivityStatsDTO.RegionActivityDTO(e.getKey(), e.getValue().intValue()))
-                .sorted(Comparator.comparingInt(SurveyActivityStatsDTO.RegionActivityDTO::getResponses).reversed())
-                .toList();
+        // Most active region/outlet
+        SurveyActivityStatsDTO.RegionActivityDTO mostActiveRegion =
+                regionResponded.entrySet().stream()
+                        .max(Map.Entry.comparingByValue())
+                        .map(e -> new SurveyActivityStatsDTO.RegionActivityDTO(e.getKey(), e.getValue().intValue()))
+                        .orElse(null);
 
-        List<SurveyActivityStatsDTO.OutletActivityDTO> sortedOutlets = outletCounts.entrySet().stream()
-                .map(e -> new SurveyActivityStatsDTO.OutletActivityDTO(e.getKey(), e.getValue().intValue()))
-                .sorted(Comparator.comparingInt(SurveyActivityStatsDTO.OutletActivityDTO::getResponses).reversed())
-                .toList();
+        SurveyActivityStatsDTO.OutletActivityDTO mostActiveOutlet =
+                outletResponded.entrySet().stream()
+                        .max(Map.Entry.comparingByValue())
+                        .map(e -> new SurveyActivityStatsDTO.OutletActivityDTO(e.getKey(), e.getValue().intValue()))
+                        .orElse(null);
+
+        // Least active region/outlet
+        SurveyActivityStatsDTO.RegionActivityDTO leastActiveRegion =
+                regionNonResponded.entrySet().stream()
+                        .max(Map.Entry.comparingByValue())
+                        .map(e -> new SurveyActivityStatsDTO.RegionActivityDTO(e.getKey(), e.getValue().intValue()))
+                        .orElse(null);
+
+        SurveyActivityStatsDTO.OutletActivityDTO leastActiveOutlet =
+                outletNonResponded.entrySet().stream()
+                        .max(Map.Entry.comparingByValue())
+                        .map(e -> new SurveyActivityStatsDTO.OutletActivityDTO(e.getKey(), e.getValue().intValue()))
+                        .orElse(null);
 
         return SurveyActivityStatsDTO.builder()
-                .mostActiveRegions(sortedRegions.stream().limit(3).toList())
-                .leastActiveRegions(sortedRegions.stream().sorted(Comparator.comparingInt(SurveyActivityStatsDTO.RegionActivityDTO::getResponses)).limit(3).toList())
-                .mostActiveOutlets(sortedOutlets.stream().limit(3).toList())
-                .leastActiveOutlets(sortedOutlets.stream().sorted(Comparator.comparingInt(SurveyActivityStatsDTO.OutletActivityDTO::getResponses)).limit(3).toList())
+                .mostActiveRegions(mostActiveRegion)
+                .leastActiveRegions(leastActiveRegion)
+                .mostActiveOutlets(mostActiveOutlet)
+                .leastActiveOutlets(leastActiveOutlet)
                 .build();
     }
 

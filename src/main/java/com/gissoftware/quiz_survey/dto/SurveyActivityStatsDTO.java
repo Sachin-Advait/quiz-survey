@@ -5,18 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
 public class SurveyActivityStatsDTO {
 
-    private List<RegionActivityDTO> mostActiveRegions;
-    private List<RegionActivityDTO> leastActiveRegions;
-    private List<OutletActivityDTO> mostActiveOutlets;
-    private List<OutletActivityDTO> leastActiveOutlets;
+    private RegionActivityDTO mostActiveRegions;
+    private RegionActivityDTO leastActiveRegions;
+    private OutletActivityDTO mostActiveOutlets;
+    private OutletActivityDTO leastActiveOutlets;
 
     @Data
     @AllArgsConstructor
@@ -24,7 +22,7 @@ public class SurveyActivityStatsDTO {
     @Builder
     public static class RegionActivityDTO {
         private String region;
-        private int responses;
+        private int totalUsers;
     }
 
     @Data
@@ -33,7 +31,6 @@ public class SurveyActivityStatsDTO {
     @Builder
     public static class OutletActivityDTO {
         private String outlet;
-        private int responses;
+        private int totalUsers;
     }
 }
-
