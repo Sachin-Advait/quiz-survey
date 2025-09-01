@@ -1,9 +1,6 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.AnnouncementReadRequest;
-import com.gissoftware.quiz_survey.dto.AnnouncementRequest;
-import com.gissoftware.quiz_survey.dto.AnnouncementWithReadStatus;
-import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.Announcement;
 import com.gissoftware.quiz_survey.service.AnnouncementService;
 import lombok.RequiredArgsConstructor;
@@ -48,4 +45,14 @@ public class AnnouncementController {
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "All announcements marked as read", null));
     }
 
+    @PostMapping("/admin/announcements-with-targets")
+    public ResponseEntity<ApiResponseDTO<Announcement>> create(@RequestBody CreateAnnouncementRequest request) {
+        Announcement announcement = announcementService.createWithTargets(
+                request.getQuizSurveyId(),
+                request.getMessage(),
+                request.getTargetUser()
+        );
+
+        return ResponseEntity.ok(new ApiResponseDTO<>(true, "Announcement posted!", announcement));
+    }
 }

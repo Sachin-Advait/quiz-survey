@@ -39,24 +39,24 @@ public class AnnouncementService {
                 .build());
     }
 
-
     public List<AnnouncementWithReadStatus> getAllWithReadStatus(String userId) {
         Set<String> readIds = readRepo.findById(userId)
                 .map(AnnouncementRead::getAnnouncementIds)
                 .orElse(Set.of());
 
         return announcementRepo.findAll().stream()
+                // Filter: show if targetUser is null/empty (general) OR includes this user
+                .filter(a -> a.getTargetUser() == null || a.getTargetUser().isEmpty() || a.getTargetUser().contains(userId))
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(a -> new AnnouncementWithReadStatus(
                         a.getId(),
                         a.getTitle(),
                         a.getMessage(),
                         a.getCreatedAt(),
-                        readIds.contains(a.getId()) // true or false
+                        readIds.contains(a.getId())
                 ))
                 .toList();
     }
-
 
     public void markAsRead(String userId, String announcementId) {
         AnnouncementRead read = readRepo.findById(userId)
@@ -90,4 +90,18 @@ public class AnnouncementService {
         readRepo.save(read);
     }
 
+    public Announcement createWithTargets(String quizSurveyId, String message, List<String> targetUser) {
+
+        QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId)
+                .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
+
+        quizSurveyModel.setIsAnnounced(true);
+        quizSurveyRepository.save(quizSurveyModel);
+
+        return announcementRepo.save(Announcement.builder()
+                .title(quizSurveyModel.getTitle())
+                .message(message)
+                .targetUser(targetUser)
+                .build());
+    }
 }

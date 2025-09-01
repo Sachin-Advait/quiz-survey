@@ -6,10 +6,11 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.List;
 
 @Document("announcements")
 @Data
@@ -22,6 +23,7 @@ public class Announcement {
     private String id;
     private String title;
     private String message;
+    private List<String> targetUser;
 
     @CreatedDate
     private Instant createdAt;
