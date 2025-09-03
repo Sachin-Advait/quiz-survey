@@ -1,7 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.*;
-import com.gissoftware.quiz_survey.model.Announcement;
+import com.gissoftware.quiz_survey.model.AnnouncementModel;
 import com.gissoftware.quiz_survey.service.AnnouncementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,8 +19,8 @@ public class AnnouncementController {
 
     // POST /api/admin/announcements — (Admin only)
     @PostMapping("/admin/announcements")
-    public ResponseEntity<ApiResponseDTO<Announcement>> create(@RequestBody AnnouncementRequest req) {
-        Announcement saved = announcementService.create(req.getQuizSurveyId(), req.getMessage());
+    public ResponseEntity<ApiResponseDTO<AnnouncementModel>> create(@RequestBody AnnouncementRequest req) {
+        AnnouncementModel saved = announcementService.create(req.getQuizSurveyId(), req.getMessage());
         return ResponseEntity.ok(new ApiResponseDTO<>(true, "Announcement posted!", saved));
     }
 
@@ -46,8 +46,8 @@ public class AnnouncementController {
     }
 
     @PostMapping("/admin/announcements-with-targets")
-    public ResponseEntity<ApiResponseDTO<Announcement>> create(@RequestBody CreateAnnouncementRequest request) {
-        Announcement announcement = announcementService.createWithTargets(
+    public ResponseEntity<ApiResponseDTO<AnnouncementModel>> create(@RequestBody CreateAnnouncementRequest request) {
+        AnnouncementModel announcement = announcementService.createWithTargets(
                 request.getQuizSurveyId(),
                 request.getMessage(),
                 request.getTargetUser()

@@ -18,7 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @EnableMongoAuditing
-public class Announcement {
+public class AnnouncementModel {
     @Id
     private String id;
     private String title;

@@ -1,7 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.dto.AnnouncementWithReadStatus;
-import com.gissoftware.quiz_survey.model.Announcement;
+import com.gissoftware.quiz_survey.model.AnnouncementModel;
 import com.gissoftware.quiz_survey.model.AnnouncementRead;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.repository.AnnouncementReadRepository;
@@ -25,7 +25,7 @@ public class AnnouncementService {
     private final QuizSurveyRepository quizSurveyRepository;
     private final UserRepository userRepository;
 
-    public Announcement create(String quizSurveyId, String message) {
+    public AnnouncementModel create(String quizSurveyId, String message) {
 
         QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId).orElseThrow(()
                 -> new RuntimeException("Invalid quiz survey Id"));
@@ -33,7 +33,7 @@ public class AnnouncementService {
         quizSurveyModel.setIsAnnounced(true);
         quizSurveyRepository.save(quizSurveyModel);
 
-        return announcementRepo.save(Announcement.builder()
+        return announcementRepo.save(AnnouncementModel.builder()
                 .title(quizSurveyModel.getTitle())
                 .message(message)
                 .build());
@@ -70,9 +70,9 @@ public class AnnouncementService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
 
-        List<Announcement> announcements = announcementRepo.findAll();
+        List<AnnouncementModel> announcements = announcementRepo.findAll();
         Set<String> allIds = announcements.stream()
-                .map(Announcement::getId)
+                .map(AnnouncementModel::getId)
                 .collect(Collectors.toSet());
 
         AnnouncementRead read = readRepo.findById(userId)
@@ -90,7 +90,7 @@ public class AnnouncementService {
         readRepo.save(read);
     }
 
-    public Announcement createWithTargets(String quizSurveyId, String message, List<String> targetUser) {
+    public AnnouncementModel createWithTargets(String quizSurveyId, String message, List<String> targetUser) {
 
         QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId)
                 .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
@@ -98,7 +98,7 @@ public class AnnouncementService {
         quizSurveyModel.setIsAnnounced(true);
         quizSurveyRepository.save(quizSurveyModel);
 
-        return announcementRepo.save(Announcement.builder()
+        return announcementRepo.save(AnnouncementModel.builder()
                 .title(quizSurveyModel.getTitle())
                 .message(message)
                 .targetUser(targetUser)
