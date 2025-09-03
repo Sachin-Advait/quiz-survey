@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.Utils.ScoringUtil;
+import com.gissoftware.quiz_survey.dto.LowScoringUserDTO;
 import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
 import com.gissoftware.quiz_survey.dto.SurveySubmissionRequest;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
@@ -11,12 +12,20 @@ import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.*;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +34,8 @@ public class ResponseService {
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
+
+    private final MongoTemplate mongoTemplate;
 
     // Store Quiz & Survey Responses
     // @Transactional
@@ -51,7 +62,6 @@ public class ResponseService {
                 throw new IllegalStateException("You have reach the limit on this quiz.");
             }
         }
-
 
         // Handle response
         return switch (qs.getType().toLowerCase()) {
@@ -140,9 +150,7 @@ public class ResponseService {
                         (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2
                 ));
 
-
         List<UserModel> users = userRepository.findAllById(responses.stream().map(ResponseModel::getUserId).toList());
-
 
         return users.stream()
                 .map(user -> {
@@ -167,5 +175,69 @@ public class ResponseService {
 
                 })
                 .collect(Collectors.toList());
+    }
+
+    public List<LowScoringUserDTO> getLowScoringUsers(int weeks, double thresholdPercent) {
+        Instant fromDate = Instant.now().minus(weeks * 7L, ChronoUnit.DAYS);
+
+        MatchOperation match = match(
+                Criteria.where("submittedAt").gte(fromDate)
+                        .and("score").ne(null)
+                        .and("maxScore").gt(0)
+        );
+
+        AddFieldsOperation addPercentage = addFields()
+                .addField("percentage")
+                .withValue(
+                        ArithmeticOperators.Multiply.valueOf(
+                                ArithmeticOperators.Divide.valueOf("$score").divideBy("$maxScore")
+                        ).multiplyBy(100)
+                ).build();
+
+        GroupOperation groupByUser = group("userId")
+                .avg("percentage").as("avgPercentage")
+                .push("quizSurveyId").as("attemptedQuizzes")
+                .count().as("attemptCount")
+                .first("userId").as("userId")
+                .first("username").as("username");
+
+        AddFieldsOperation convertUserId = addFields()
+                .addField("userIdObj")
+                .withValue(ConvertOperators.ToObjectId.toObjectId("$userId"))
+                .build();
+
+        LookupOperation lookupUser = LookupOperation.newLookup()
+                .from("users")
+                .localField("userIdObj")
+                .foreignField("_id")
+                .as("userDetails");
+
+        UnwindOperation unwindUser = unwind("userDetails");
+
+        MatchOperation avgBelowThreshold = match(Criteria.where("avgPercentage").lt(thresholdPercent));
+
+        SortOperation sortByLowest = sort(Sort.by(Sort.Direction.ASC, "avgPercentage"));
+
+        ProjectionOperation project = project()
+                .and("userId").as("userId")
+                .and("userDetails.staffId").as("staffId")
+                .and("username").as("username")
+                .and("avgPercentage").as("avgPercentage")
+                .and("attemptedQuizzes").as("attemptedQuizzes")
+                .and(ConvertOperators.ToLong.toLong("$attemptCount")).as("attemptCount");
+
+        Aggregation aggregation = newAggregation(
+                match,
+                addPercentage,
+                groupByUser,
+                avgBelowThreshold,
+                sortByLowest,
+                convertUserId,
+                lookupUser,
+                unwindUser,
+                project
+        );
+
+        return mongoTemplate.aggregate(aggregation, "responses", LowScoringUserDTO.class).getMappedResults();
     }
 }

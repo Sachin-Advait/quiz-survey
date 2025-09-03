@@ -1,9 +1,6 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
-import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
-import com.gissoftware.quiz_survey.dto.SurveySubmissionRequest;
-import com.gissoftware.quiz_survey.dto.UserResponseDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.service.ResponseService;
 import lombok.AllArgsConstructor;
@@ -50,6 +47,16 @@ public class ResponseController {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true,
                         "Respondents retrieved successfully", responseService.totalResponseReceived(quizSurveyId))
+        );
+    }
+
+    // ✅ New Endpoint: Low Scorers During Last 5 Weeks
+    @GetMapping("/user/responses/low-scorers")
+    public ResponseEntity<ApiResponseDTO<List<LowScoringUserDTO>>> lowScorersLast5Weeks() {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true,
+                        "Low scorers during last 5 weeks retrieved successfully",
+                        responseService.getLowScoringUsers(5, 50))
         );
     }
 }
