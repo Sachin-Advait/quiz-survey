@@ -37,6 +37,13 @@ public class QuizSurveyModel {
     private Integer maxRetake;
     @Builder.Default
     private List<String> targetedUsers = new ArrayList<>();
+
+    @Builder.Default
+    private List<String> userDataDisplayFields = new ArrayList<>();
+    private VisibilityType visibilityType;
+    private AnnouncementMode announcementMode;
+    private Instant scheduledTime;
+
     @CreatedDate
     private Instant createdAt;
 }

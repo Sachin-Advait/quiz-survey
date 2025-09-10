@@ -50,8 +50,14 @@ public class ResultService {
     }
 
     public QuizResultDTO getQuizResultByUserId(String quizSurveyId, String userId) {
+
         userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Invalid userId"));
         QuizSurveyModel quizSurvey = getQuizSurveyOrThrow(quizSurveyId);
+
+        if (!quizSurvey.getIsAnnounced()) {
+            throw new IllegalStateException("Results are not announced yet.");
+        }
+
         Map<String, Object> answerKey = quizSurvey.getAnswerKey();
 
         ResponseModel highestScoreResp = responseRepo

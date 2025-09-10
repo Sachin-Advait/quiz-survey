@@ -1,12 +1,15 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.Utils.UserDataFieldConstants;
 import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
 import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
 import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
+import com.gissoftware.quiz_survey.model.AnnouncementMode;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
+import com.gissoftware.quiz_survey.model.VisibilityType;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
@@ -76,7 +79,25 @@ public class QuizSurveyService {
     // Create Quiz & Survey
     public QuizSurveyModel createQuizSurvey(QuizSurveyModel model) {
 
+        if (model.getVisibilityType() == null) {
+            throw new IllegalArgumentException("Visibility not defined!");
+        }
+
+        if (model.getVisibilityType() == VisibilityType.PRIVATE && !model.getUserDataDisplayFields().isEmpty()) {
+            List<String> filteredFields = model.getUserDataDisplayFields().stream()
+                    .filter(UserDataFieldConstants.ALLOWED_FIELDS::contains)
+                    .distinct()
+                    .toList();
+
+            model.setUserDataDisplayFields(filteredFields);
+        } else if (model.getVisibilityType() == VisibilityType.PRIVATE) {
+            throw new IllegalArgumentException("User field are empty");
+        }
+
+        model.setIsAnnounced(model.getAnnouncementMode() == AnnouncementMode.IMMEDIATE);
+
         QuizSurveyModel quizSurveyModel = quizSurveyRepo.save(model);
+
         quizSurveySocketController.pushNewSurvey(
                 quizSurveyModel.getId(),
                 quizSurveyModel.getIsMandatory(),

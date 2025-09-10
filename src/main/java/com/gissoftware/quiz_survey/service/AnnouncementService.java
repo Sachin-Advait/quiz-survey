@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.dto.AnnouncementWithReadStatus;
+import com.gissoftware.quiz_survey.model.AnnouncementMode;
 import com.gissoftware.quiz_survey.model.AnnouncementModel;
 import com.gissoftware.quiz_survey.model.AnnouncementRead;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
@@ -30,8 +31,12 @@ public class AnnouncementService {
         QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId).orElseThrow(()
                 -> new RuntimeException("Invalid quiz survey Id"));
 
-        quizSurveyModel.setIsAnnounced(true);
-        quizSurveyRepository.save(quizSurveyModel);
+        if (quizSurveyModel.getAnnouncementMode() == AnnouncementMode.MANUAL) {
+            quizSurveyModel.setIsAnnounced(true);
+            quizSurveyRepository.save(quizSurveyModel);
+        } else if (quizSurveyModel.getAnnouncementMode() == AnnouncementMode.IMMEDIATE) {
+            throw new IllegalArgumentException("Quiz Survey already announced");
+        }
 
         return announcementRepo.save(AnnouncementModel.builder()
                 .title(quizSurveyModel.getTitle())
