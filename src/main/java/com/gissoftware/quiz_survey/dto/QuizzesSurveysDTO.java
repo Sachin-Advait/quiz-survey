@@ -18,6 +18,7 @@ public class QuizzesSurveysDTO {
     private Integer totalQuestion;
     private Boolean status;
     private String quizTotalDuration;
+    private String quizDuration;
     private Boolean isAnnounced;
     private Boolean isParticipated;
     private Boolean isMandatory;

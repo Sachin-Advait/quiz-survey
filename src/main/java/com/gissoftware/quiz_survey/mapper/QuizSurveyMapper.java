@@ -37,6 +37,7 @@ public class QuizSurveyMapper {
                 .totalQuestion(getQuestionCount(quiz))
                 .status(quiz.getStatus())
                 .quizTotalDuration(quiz.getQuizTotalDuration())
+                .quizDuration(quiz.getQuizDuration())
                 .isAnnounced(quiz.getIsAnnounced())
                 .createdAt(quiz.getCreatedAt())
                 .isParticipated(isParticipated)
