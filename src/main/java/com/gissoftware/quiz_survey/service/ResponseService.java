@@ -40,12 +40,19 @@ public class ResponseService {
     // Store Quiz & Survey Responses
     // @Transactional
     public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
-        userRepository.findById(request.getUserId())
+        UserModel user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid username"));
 
         // Fetch quiz/survey
         QuizSurveyModel qs = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
+
+        boolean userExists = qs.getTargetedUsers().stream()
+                .anyMatch(s -> s.contains(user.getId()));
+
+        if (!userExists) {
+            throw new IllegalArgumentException("User does not exist in the target users");
+        }
 
         // ✅ Check if the user has already submitted a response
         if (qs.getType().equalsIgnoreCase("survey")) {

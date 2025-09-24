@@ -1,15 +1,13 @@
 package com.gissoftware.quiz_survey.controller;
 
-import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
-import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
-import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
-import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
+import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.service.QuizSurveyService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.time.Instant;
 
 @RestController
 @RequestMapping("/api/user/quiz-survey")
@@ -31,10 +29,17 @@ public class QuizSurveyController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponseDTO<List<QuizzesSurveysDTO>>> getQuizzesSurveys(
-            @RequestParam(required = false) String userId
+    public ResponseEntity<ApiResponseDTO<PageResponseDTO<QuizzesSurveysDTO>>> getQuizzesSurveys(
+            @RequestParam(required = false) String userId,
+            @RequestParam(defaultValue = "All Status") String status,
+            @RequestParam(defaultValue = "All Types") String type,
+            @RequestParam(defaultValue = "Latest") String sort,
+            @RequestParam(defaultValue = "All") String participation,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant startDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
     ) {
-        List<QuizzesSurveysDTO> surveys = quizSurveyService.getQuizzesSurveys(userId);
+        PageResponseDTO<QuizzesSurveysDTO> surveys = quizSurveyService.getQuizzesSurveys(userId, status, type, sort, participation, startDate, page, size);
         return ResponseEntity.ok(new ApiResponseDTO<>(true,
                 "All quiz & surveys retrieved successfully", surveys));
     }
