@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.gissoftware.quiz_survey.model.UserRole;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,6 +12,7 @@ import java.time.Instant;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @Builder
 public class UserResponseDTO {
     private String id;

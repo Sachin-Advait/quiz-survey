@@ -129,17 +129,34 @@ public class ResponseService {
 
         List<UserModel> users = userRepository.findAllById(quiz.getTargetedUsers());
 
+        List<String> userVisibleField = quiz.getUserDataDisplayFields();
+
         return users.stream()
                 .map(user -> {
-                    return UserResponseDTO.builder()
-                            .id(user.getId())
-                            .staffId(user.getStaffId())
-                            .username(user.getUsername())
-                            .role(user.getRole())
-                            .region(user.getRegion())
-                            .outlet(user.getOutlet())
-                            .position(user.getPosition())
-                            .build();
+                    UserResponseDTO.UserResponseDTOBuilder builder = UserResponseDTO.builder();
+
+                    builder.id(user.getId());
+
+                    if (userVisibleField.contains("staffId")) {
+                        builder.staffId(user.getStaffId());
+                    }
+                    if (userVisibleField.contains("username")) {
+                        builder.username(user.getUsername());
+                    }
+                    if (userVisibleField.contains("role")) {
+                        builder.role(user.getRole());
+                    }
+                    if (userVisibleField.contains("region")) {
+                        builder.region(user.getRegion());
+                    }
+                    if (userVisibleField.contains("outlet")) {
+                        builder.outlet(user.getOutlet());
+                    }
+                    if (userVisibleField.contains("position")) {
+                        builder.position(user.getPosition());
+                    }
+
+                    return builder.build();
                 })
                 .collect(Collectors.toList());
     }
@@ -147,6 +164,8 @@ public class ResponseService {
     public List<ResponseReceivedDTO> totalResponseReceived(String quizSurveyId) {
         QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
                 .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
+
+        List<String> userVisibleField = quiz.getUserDataDisplayFields();
 
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
 
@@ -168,17 +187,34 @@ public class ResponseService {
 
                     String result = (score >= 0.5 * maxScore) ? "PASS" : "FAIL";
 
-                    return ResponseReceivedDTO.builder()
-                            .id(user.getId())
-                            .staffId(user.getStaffId())
-                            .username(user.getUsername())
-                            .role(user.getRole())
-                            .region(user.getRegion())
-                            .outlet(user.getOutlet())
-                            .position(user.getPosition())
-                            .result(result)
-                            .submittedAt(response.getSubmittedAt())
-                            .build();
+                    ResponseReceivedDTO.ResponseReceivedDTOBuilder builder = ResponseReceivedDTO.builder();
+
+                    // Always include ID for identification purposes
+                    builder.id(user.getId());
+
+                    builder.result(result);
+                    builder.submittedAt(response.getSubmittedAt());
+
+                    if (userVisibleField.contains("staffId")) {
+                        builder.staffId(user.getStaffId());
+                    }
+                    if (userVisibleField.contains("username")) {
+                        builder.username(user.getUsername());
+                    }
+                    if (userVisibleField.contains("role")) {
+                        builder.role(user.getRole());
+                    }
+                    if (userVisibleField.contains("region")) {
+                        builder.region(user.getRegion());
+                    }
+                    if (userVisibleField.contains("outlet")) {
+                        builder.outlet(user.getOutlet());
+                    }
+                    if (userVisibleField.contains("position")) {
+                        builder.position(user.getPosition());
+                    }
+
+                    return builder.build();
 
                 })
                 .collect(Collectors.toList());

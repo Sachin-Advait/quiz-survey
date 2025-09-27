@@ -54,6 +54,9 @@ public class QuizSurveyService {
                 .answerKey(quiz.getAnswerKey())
                 .createdAt(quiz.getCreatedAt())
                 .maxRetake(quiz.getMaxRetake())
+                .visibilityType(quiz.getVisibilityType())
+                .announcementMode(quiz.getAnnouncementMode())
+                .userDataDisplayFields(quiz.getUserDataDisplayFields())
                 .build();
     }
 
@@ -236,6 +239,8 @@ public class QuizSurveyService {
         if (model.getIsMandatory() != null) existing.setIsMandatory(model.getIsMandatory());
         if (!model.getTargetedUsers().isEmpty()) existing.setTargetedUsers(model.getTargetedUsers());
         if (model.getMaxRetake() != null) existing.setMaxRetake(model.getMaxRetake());
+        if (model.getUserDataDisplayFields() != null)
+            existing.setUserDataDisplayFields(model.getUserDataDisplayFields());
 
         return quizSurveyRepo.save(existing);
     }
