@@ -239,7 +239,7 @@ public class QuizSurveyService {
         if (model.getIsMandatory() != null) existing.setIsMandatory(model.getIsMandatory());
         if (!model.getTargetedUsers().isEmpty()) existing.setTargetedUsers(model.getTargetedUsers());
         if (model.getMaxRetake() != null) existing.setMaxRetake(model.getMaxRetake());
-        if (model.getUserDataDisplayFields() != null)
+        if (!model.getUserDataDisplayFields().isEmpty())
             existing.setUserDataDisplayFields(model.getUserDataDisplayFields());
 
         return quizSurveyRepo.save(existing);
