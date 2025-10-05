@@ -14,18 +14,16 @@ import com.gissoftware.quiz_survey.model.VisibilityType;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.*;
-import java.util.stream.Collectors;
-
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +48,7 @@ public class QuizSurveyService {
                 .title(quiz.getTitle())
                 .definitionJson(quiz.getDefinitionJson())
                 .quizDuration(quiz.getQuizDuration())
+                .quizTotalDuration(quiz.getQuizTotalDuration())
                 .maxScore(quiz.getMaxScore())
                 .answerKey(quiz.getAnswerKey())
                 .createdAt(quiz.getCreatedAt())
