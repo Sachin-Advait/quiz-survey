@@ -1,11 +1,11 @@
 package com.gissoftware.quiz_survey.dto;
 
+import com.gissoftware.quiz_survey.model.VisibilityType;
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.Instant;
 
 @Data
 @NoArgsConstructor
@@ -24,4 +24,5 @@ public class QuizzesSurveysDTO {
     private Boolean isMandatory;
     private Instant createdAt;
     private Integer maxRetake;
+    private VisibilityType visibilityType;
 }
