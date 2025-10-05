@@ -9,13 +9,12 @@ import com.gissoftware.quiz_survey.repository.AnnouncementReadRepository;
 import com.gissoftware.quiz_survey.repository.AnnouncementRepository;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -97,16 +96,21 @@ public class AnnouncementService {
 
     public AnnouncementModel createWithTargets(String quizSurveyId, String message, List<String> targetUser) {
 
-        QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId)
-                .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
+        String title = "System Notification"; // Default title
 
-        quizSurveyModel.setIsAnnounced(true);
-        quizSurveyRepository.save(quizSurveyModel);
+        if (quizSurveyId != null && !quizSurveyId.isEmpty()) {
+            QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId)
+                    .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
+
+            quizSurveyModel.setIsAnnounced(true);
+            quizSurveyRepository.save(quizSurveyModel);
+
+            title = quizSurveyModel.getTitle();
+        }
 
         return announcementRepo.save(AnnouncementModel.builder()
-                .title(quizSurveyModel.getTitle())
+                .title(title)
                 .message(message)
                 .targetUser(targetUser)
                 .build());
-    }
-}
+    }}
