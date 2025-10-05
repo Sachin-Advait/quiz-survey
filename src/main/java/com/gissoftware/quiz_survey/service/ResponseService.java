@@ -1,5 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+
 import com.gissoftware.quiz_survey.Utils.ScoringUtil;
 import com.gissoftware.quiz_survey.dto.LowScoringUserDTO;
 import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
@@ -11,21 +13,18 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.*;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.*;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -267,7 +266,9 @@ public class ResponseService {
                 .and("username").as("username")
                 .and("avgPercentage").as("avgPercentage")
                 .and("attemptedQuizzes").as("attemptedQuizzes")
-                .and(ConvertOperators.ToLong.toLong("$attemptCount")).as("attemptCount");
+                .and(ConvertOperators.ToLong.toLong("$attemptCount")).as("attemptCount")
+                .and("userDetails.region").as("region")
+                .and("userDetails.outlet").as("outlet");
 
         Aggregation aggregation = newAggregation(
                 match,
