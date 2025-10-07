@@ -34,7 +34,6 @@ public class ResponseService {
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
-    private final QuizSurveyService quizSurveyService;
 
     private final MongoTemplate mongoTemplate;
 
@@ -94,9 +93,9 @@ public class ResponseService {
 
         List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), user.getId());
 
-        quiz.setMaxRetake(quiz.getMaxRetake() - existingResponses.size());
+        quiz.setMaxRetake(quiz.getMaxRetake() - 1);
+        quizSurveyRepo.save(quiz);
 
-        quizSurveyService.updateQuizSurvey(quiz);
 
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(quiz.getId())
