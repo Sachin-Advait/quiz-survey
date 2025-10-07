@@ -110,7 +110,7 @@ public class ResultService {
 
         return definition.getPages().stream()
                 .flatMap(page -> page.getElements().stream())
-                .map(el -> buildSurveyResultDTO(el, counts, ratings, userAnswers, responses.size()))
+                .map(el -> buildSurveyResultDTO(el, counts, ratings, userAnswers, responses.size(), survey.getId()))
                 .toList();
     }
 
@@ -150,7 +150,7 @@ public class ResultService {
 
         return definition.getPages().stream()
                 .flatMap(page -> page.getElements().stream())
-                .map(el -> buildUserSurveyResultDTO(el, counts, ratings, userAnswers, responses.size()))
+                .map(el -> buildUserSurveyResultDTO(el, counts, userAnswers, responses.size(), quizSurveyId))
                 .toList();
     }
 
@@ -228,7 +228,7 @@ public class ResultService {
                                                  Map<String, Map<String, Integer>> counts,
                                                  Map<String, List<Integer>> ratings,
                                                  Map<String, Object> userAnswers,
-                                                 int totalResponses) {
+                                                 int totalResponses, String quizId) {
         String key = el.getName();
         String type = el.getType().toLowerCase();
         String title = el.getTitle();
@@ -241,7 +241,6 @@ public class ResultService {
                 Object userValue = userAnswers.get(key);
                 boolean selected = userValue instanceof List<?> list ? list.contains(choice) :
                         choice.equals(userValue);
-                choiceMap.put("isSelect", selected);
                 result.put(choice, choiceMap);
             });
             return new SurveyResultDTO(title, type, result);
@@ -252,49 +251,92 @@ public class ResultService {
             return new SurveyResultDTO(title, "rating", result);
         } else if ("boolean".equals(type)) {
             int yes = 0, no = 0;
-            for (ResponseModel resp : responseRepo.findByQuizSurveyId(el.getName())) {
+            for (ResponseModel resp : responseRepo.findByQuizSurveyId(quizId)) {
                 Object val = resp.getAnswers().get(key);
-                if (Boolean.parseBoolean(String.valueOf(val))) yes++;
-                else no++;
+                if (val != null && Boolean.parseBoolean(String.valueOf(val))) {
+                    yes++;
+                } else {
+                    no++;
+                }
             }
+
+            int total = yes + no;
+            int yesPercentage = total > 0 ? (int) Math.round((yes * 100.0) / total) : 0;
+            int noPercentage = total > 0 ? (int) Math.round((no * 100.0) / total) : 0;
+
             Map<String, Object> boolResult = Map.of(
-                    "Yes", Map.of("count", yes, "isSelect", Boolean.TRUE.equals(userAnswers.get(key))),
-                    "No", Map.of("count", no, "isSelect", Boolean.FALSE.equals(userAnswers.get(key)))
+                    "Yes", Map.of("percentage", yesPercentage),
+                    "No", Map.of("percentage", noPercentage)
             );
+
             return new SurveyResultDTO(title, "boolean", boolResult);
+
         } else return new SurveyResultDTO(title, type, Collections.emptyMap());
     }
 
     private SurveyResultDTO buildUserSurveyResultDTO(SurveyDefinition.Element el,
                                                      Map<String, Map<String, Integer>> counts,
-                                                     Map<String, List<Integer>> ratings,
                                                      Map<String, Object> userAnswers,
-                                                     int totalResponses) {
+                                                     int totalResponses, String surveyId) {
         String key = el.getName();
         String type = el.getType().toLowerCase();
         String title = el.getTitle();
         Object userValue = userAnswers.get(key);
 
-        if ("rating".equals(type)) return new SurveyResultDTO(title, type, Map.of("value", userValue));
-
-        if (el.getChoices() != null) {
-            Map<String, Integer> countMap = counts.getOrDefault(key, new HashMap<>());
-            Map<String, Object> detailedMap = new LinkedHashMap<>();
-            Set<String> userSelected = new HashSet<>();
-            if (userValue instanceof List<?> list) list.forEach(v -> userSelected.add(v.toString()));
-            else if (userValue != null) userSelected.add(userValue.toString());
-
-            for (String choice : el.getChoices()) {
-                int count = countMap.getOrDefault(choice, 0);
-                int percentage = (int) Math.round(count * 100.0 / totalResponses);
-                detailedMap.put(choice, Map.of("percentage", percentage, "correct", userSelected.contains(choice)));
+        switch (type) {
+            case "rating" -> {
+                return new SurveyResultDTO(title, type, Map.of("value", userValue));
             }
-            return new SurveyResultDTO(title, type, detailedMap);
+            case "radiogroup", "checkbox", "dropdown" -> {
+                System.out.println(el.getChoices());
+                Map<String, Integer> countMap = counts.getOrDefault(key, new HashMap<>());
+                Map<String, Object> detailedMap = new LinkedHashMap<>();
+                Set<String> userSelected = new HashSet<>();
+                if (userValue instanceof List<?> list) list.forEach(v -> userSelected.add(v.toString()));
+                else if (userValue != null) userSelected.add(userValue.toString());
+                if (userValue instanceof Boolean boolVal) {
+                    userSelected.add(boolVal ? "Yes" : "No");
+                } else if (userValue instanceof List<?> list) {
+                    list.forEach(v -> userSelected.add(v.toString()));
+                } else if (userValue != null) {
+                    userSelected.add(userValue.toString());
+                }
+
+
+                for (String choice : el.getChoices()) {
+                    int count = countMap.getOrDefault(choice, 0);
+                    int percentage = (int) Math.round(count * 100.0 / totalResponses);
+                    detailedMap.put(choice, Map.of("percentage", percentage, "isSelect", userSelected.contains(choice)));
+                }
+                return new SurveyResultDTO(title, type, detailedMap);
+            }
+            case "boolean" -> {
+                int yes = 0, no = 0;
+                for (ResponseModel resp : responseRepo.findByQuizSurveyId(surveyId)) {
+                    Object val = resp.getAnswers().get(key);
+                    if (val != null && Boolean.parseBoolean(String.valueOf(val))) {
+                        yes++;
+                    } else {
+                        no++;
+                    }
+                }
+
+                int total = yes + no;
+                int yesPercentage = total > 0 ? (int) Math.round((yes * 100.0) / total) : 0;
+                int noPercentage = total > 0 ? (int) Math.round((no * 100.0) / total) : 0;
+
+                
+                Map<String, Object> boolResult = Map.of(
+                        "Yes", Map.of("percentage", yesPercentage, "isSelect", Boolean.TRUE.equals(userAnswers.get(key))),
+                        "No", Map.of("percentage", noPercentage, "isSelect", Boolean.FALSE.equals(userAnswers.get(key)))
+                );
+
+                return new SurveyResultDTO(title, "boolean", boolResult);
+            }
         }
 
-        if ("boolean".equals(type))
-            return new SurveyResultDTO(title, "boolean", Map.of("value", userValue != null && Boolean.parseBoolean(userValue.toString())));
-        return new SurveyResultDTO(title, type, Map.of("value", userValue != null ? userValue.toString() : null));
+
+        return new SurveyResultDTO(title, type, Map.of("value", userValue.toString()));
     }
 }
 

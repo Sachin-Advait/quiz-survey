@@ -16,7 +16,7 @@ public class ResponseController {
 
     private final ResponseService responseService;
 
-    @PostMapping("/user/submit-survey/{id}")
+    @PostMapping("/user/submit/{id}")
     public ResponseEntity<ApiResponseDTO<ResponseModel>> submitResponse(
             @PathVariable String id,
             @RequestBody SurveySubmissionRequest request

@@ -1,7 +1,5 @@
 package com.gissoftware.quiz_survey.service;
 
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-
 import com.gissoftware.quiz_survey.Utils.ScoringUtil;
 import com.gissoftware.quiz_survey.dto.LowScoringUserDTO;
 import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
@@ -13,18 +11,21 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Service
 @RequiredArgsConstructor
@@ -33,6 +34,7 @@ public class ResponseService {
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
+    private final QuizSurveyService quizSurveyService;
 
     private final MongoTemplate mongoTemplate;
 
@@ -53,17 +55,16 @@ public class ResponseService {
             throw new IllegalArgumentException("User does not exist in the target users");
         }
 
+        List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, request.getUserId());
+
         // ✅ Check if the user has already submitted a response
         if (qs.getType().equalsIgnoreCase("survey")) {
-            List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, request.getUserId());
             if (!existingResponses.isEmpty()) {
                 throw new IllegalStateException("You have already submitted this survey.");
             }
         }
 
         if (qs.getType().equalsIgnoreCase("quiz")) {
-            List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId,
-                    request.getUserId());
             if (existingResponses.size() >= qs.getMaxRetake()) {
                 throw new IllegalStateException("You have reach the limit on this quiz.");
             }
@@ -90,6 +91,12 @@ public class ResponseService {
 
         UserModel user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid userId"));
+
+        List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), user.getId());
+
+        quiz.setMaxRetake(quiz.getMaxRetake() - existingResponses.size());
+
+        quizSurveyService.updateQuizSurvey(quiz);
 
         return responseRepo.save(ResponseModel.builder()
                 .quizSurveyId(quiz.getId())

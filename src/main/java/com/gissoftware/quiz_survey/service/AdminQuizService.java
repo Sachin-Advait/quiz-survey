@@ -16,6 +16,7 @@ import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +60,15 @@ public class AdminQuizService {
 
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
         if (responses.isEmpty()) {
-            throw new IllegalArgumentException("No responses found for this quiz");
+            return QuizInsightsDTO.builder()
+                    .title(quiz.getTitle())
+                    .averageScore(0.0)
+                    .passRate(0.0)
+                    .failRate(0.0)
+                    .topScorer(null)
+                    .lowestScorer(null)
+                    .mostIncorrectQuestions(Collections.emptyList())
+                    .build();
         }
 
         int totalScore = 0;
@@ -124,6 +133,7 @@ public class AdminQuizService {
 
         double average = (double) totalScore / totalUsers;
         double formattedAverage = Math.round(average * 100.0) / 100.0;
+
 
         return QuizInsightsDTO.builder()
                 .title(quiz.getTitle())

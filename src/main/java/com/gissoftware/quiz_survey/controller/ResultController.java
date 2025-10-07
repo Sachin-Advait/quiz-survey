@@ -38,7 +38,7 @@ public class ResultController {
         );
     }
 
-    @GetMapping("/user/all-survey-result/{quizSurveyId}")
+    @GetMapping("/admin/survey-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultsAdmin(
             @PathVariable String quizSurveyId,
             @RequestParam(required = false) String userId) {
