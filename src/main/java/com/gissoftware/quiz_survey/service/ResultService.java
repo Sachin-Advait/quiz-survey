@@ -252,7 +252,7 @@ public class ResultService {
 
         return new SurveyResultDTO(title, type, Map.of("value", userValue.toString()));
     }
-    
+
     private QuizSurveyModel getQuizSurveyOrThrow(String id) {
         return quizSurveyRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Quiz survey not found"));
@@ -287,6 +287,8 @@ public class ResultService {
                         .correctAnswer(Objects.equals(q.getType(), "text") && q.getCorrectAnswer() != null
                                 ? q.getCorrectAnswer().toString() : null)
                         .selectedOptions(selectedOpt)
+                        .arabicTitle(q.getArabicTitle())
+                        .mark(q.getMark())
                         .build());
             }
         }

@@ -64,7 +64,7 @@ public class ResponseService {
         }
 
         if (qs.getType().equalsIgnoreCase("quiz")) {
-            if (existingResponses.size() >= qs.getMaxRetake()) {
+            if (existingResponses.size() > qs.getMaxRetake()) {
                 throw new IllegalStateException("You have reach the limit on this quiz.");
             }
         }

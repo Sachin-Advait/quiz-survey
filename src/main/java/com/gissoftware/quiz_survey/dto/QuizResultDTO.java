@@ -33,8 +33,10 @@ public class QuizResultDTO {
     static public class QuestionAnswerDTO {
         private List<OptionDTO> choices;
         private String type;
+        private String arabicTitle;
         private Object selectedOptions;
         private String correctAnswer;
+        private Integer mark;
     }
 
     @Data
