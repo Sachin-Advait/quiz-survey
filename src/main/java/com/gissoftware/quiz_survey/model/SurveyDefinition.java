@@ -26,6 +26,7 @@ public class SurveyDefinition {
         private String type;
         private String name;
         private String title;
+        private String arabicTitle;
         private List<String> choices;
         private Object correctAnswer;
     }
