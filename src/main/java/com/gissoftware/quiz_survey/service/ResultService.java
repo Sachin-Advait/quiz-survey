@@ -164,12 +164,12 @@ public class ResultService {
                 choiceMap.put("percentage", (int) Math.round(count * 100.0 / totalResponses));
                 result.put(choice, choiceMap);
             });
-            return new SurveyResultDTO(title, type, result);
+            return new SurveyResultDTO(title, el.getArabicTitle(), type, result);
         } else if (ratings.containsKey(key)) {
             List<Integer> ratingList = ratings.get(key);
             double avg = ratingList.stream().mapToInt(i -> i).average().orElse(0.0);
             Map<String, Object> result = Map.of("averageRating", avg, "responseCount", ratingList.size());
-            return new SurveyResultDTO(title, "rating", result);
+            return new SurveyResultDTO(title, el.getArabicTitle(), "rating", result);
         } else if ("boolean".equals(type)) {
             int yes = 0, no = 0;
             for (ResponseModel resp : responseRepo.findByQuizSurveyId(quizId)) {
@@ -190,9 +190,9 @@ public class ResultService {
                     "No", Map.of("percentage", noPercentage)
             );
 
-            return new SurveyResultDTO(title, "boolean", boolResult);
+            return new SurveyResultDTO(title, el.getArabicTitle(), type, boolResult);
 
-        } else return new SurveyResultDTO(title, type, Collections.emptyMap());
+        } else return new SurveyResultDTO(title, el.getArabicTitle(), type, Collections.emptyMap());
     }
 
     private SurveyResultDTO buildUserSurveyResultDTO(SurveyDefinition.Element el,
@@ -206,7 +206,7 @@ public class ResultService {
 
         switch (type) {
             case "rating" -> {
-                return new SurveyResultDTO(title, type, Map.of("value", userValue));
+                return new SurveyResultDTO(title, el.getArabicTitle(), type, Map.of("value", userValue));
             }
             case "radiogroup", "checkbox", "dropdown" -> {
                 System.out.println(el.getChoices());
@@ -222,7 +222,7 @@ public class ResultService {
                     int percentage = (int) Math.round(count * 100.0 / totalResponses);
                     detailedMap.put(choice, Map.of("percentage", percentage, "isSelect", userSelected.contains(choice)));
                 }
-                return new SurveyResultDTO(title, type, detailedMap);
+                return new SurveyResultDTO(title, el.getArabicTitle(), type, detailedMap);
             }
             case "boolean" -> {
                 int yes = 0, no = 0;
@@ -245,12 +245,12 @@ public class ResultService {
                         "No", Map.of("percentage", noPercentage, "isSelect", Boolean.FALSE.equals(userAnswers.get(key)))
                 );
 
-                return new SurveyResultDTO(title, type, boolResult);
+                return new SurveyResultDTO(title, el.getArabicTitle(), type, boolResult);
             }
         }
 
 
-        return new SurveyResultDTO(title, type, Map.of("value", userValue.toString()));
+        return new SurveyResultDTO(title, el.getArabicTitle(), type, Map.of("value", userValue.toString()));
     }
 
     private QuizSurveyModel getQuizSurveyOrThrow(String id) {

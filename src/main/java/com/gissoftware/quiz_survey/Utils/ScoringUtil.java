@@ -33,7 +33,7 @@ public class ScoringUtil {
                 }
                 case "boolean" -> {
                     String normalizedAns = ans.toString().equalsIgnoreCase("true") ? "Yes" : "No";
-                    if (expected.toString().equalsIgnoreCase(normalizedAns)) {
+                    if (expected.toString().toLowerCase().equalsIgnoreCase(normalizedAns)) {
                         correct++;
                     }
                 }
