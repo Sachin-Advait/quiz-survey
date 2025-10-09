@@ -20,97 +20,103 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class AnnouncementService {
 
-    private final AnnouncementRepository announcementRepo;
-    private final AnnouncementReadRepository readRepo;
-    private final QuizSurveyRepository quizSurveyRepository;
-    private final UserRepository userRepository;
+  private final AnnouncementRepository announcementRepo;
+  private final AnnouncementReadRepository readRepo;
+  private final QuizSurveyRepository quizSurveyRepository;
+  private final UserRepository userRepository;
 
-    public AnnouncementModel create(String quizSurveyId, String message) {
+  public AnnouncementModel create(String quizSurveyId, String message) {
 
-        QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId).orElseThrow(()
-                -> new RuntimeException("Invalid quiz survey Id"));
+    QuizSurveyModel quizSurveyModel =
+        quizSurveyRepository
+            .findById(quizSurveyId)
+            .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
 
-        if (quizSurveyModel.getAnnouncementMode() == AnnouncementMode.MANUAL) {
-            quizSurveyModel.setIsAnnounced(true);
-            quizSurveyRepository.save(quizSurveyModel);
-        } else if (quizSurveyModel.getAnnouncementMode() == AnnouncementMode.IMMEDIATE) {
-            throw new IllegalArgumentException("Quiz Survey already announced");
-        }
-
-        return announcementRepo.save(AnnouncementModel.builder()
-                .title(quizSurveyModel.getTitle())
-                .message(message)
-                .build());
+    if (quizSurveyModel.getAnnouncementMode() == AnnouncementMode.SCHEDULED) {
+      quizSurveyModel.setIsAnnounced(true);
+      quizSurveyRepository.save(quizSurveyModel);
+    } else if (quizSurveyModel.getAnnouncementMode() == AnnouncementMode.IMMEDIATE) {
+      throw new IllegalArgumentException("Quiz Survey already announced");
     }
 
-    public List<AnnouncementWithReadStatus> getAllWithReadStatus(String userId) {
-        Set<String> readIds = readRepo.findById(userId)
-                .map(AnnouncementRead::getAnnouncementIds)
-                .orElse(Set.of());
+    return announcementRepo.save(
+        AnnouncementModel.builder().title(quizSurveyModel.getTitle()).message(message).build());
+  }
 
-        return announcementRepo.findAll().stream()
-                // Filter: show if targetUser is null/empty (general) OR includes this user
-                .filter(a -> a.getTargetUser() == null || a.getTargetUser().isEmpty() || a.getTargetUser().contains(userId))
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                .map(a -> new AnnouncementWithReadStatus(
-                        a.getId(),
-                        a.getTitle(),
-                        a.getMessage(),
-                        a.getCreatedAt(),
-                        readIds.contains(a.getId())
-                ))
-                .toList();
+  public List<AnnouncementWithReadStatus> getAllWithReadStatus(String userId) {
+    Set<String> readIds =
+        readRepo.findById(userId).map(AnnouncementRead::getAnnouncementIds).orElse(Set.of());
+
+    return announcementRepo.findAll().stream()
+        // Filter: show if targetUser is null/empty (general) OR includes this user
+        .filter(
+            a ->
+                a.getTargetUser() == null
+                    || a.getTargetUser().isEmpty()
+                    || a.getTargetUser().contains(userId))
+        .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+        .map(
+            a ->
+                new AnnouncementWithReadStatus(
+                    a.getId(),
+                    a.getTitle(),
+                    a.getMessage(),
+                    a.getCreatedAt(),
+                    readIds.contains(a.getId())))
+        .toList();
+  }
+
+  public void markAsRead(String userId, String announcementId) {
+    AnnouncementRead read =
+        readRepo.findById(userId).orElse(AnnouncementRead.builder().userId(userId).build());
+
+    read.getAnnouncementIds().add(announcementId);
+    readRepo.save(read);
+  }
+
+  public void markAllAsRead(String userId) {
+    userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Invalid username"));
+
+    List<AnnouncementModel> announcements = announcementRepo.findAll();
+    Set<String> allIds =
+        announcements.stream().map(AnnouncementModel::getId).collect(Collectors.toSet());
+
+    AnnouncementRead read =
+        readRepo
+            .findById(userId)
+            .orElse(
+                AnnouncementRead.builder()
+                    .userId(userId)
+                    .announcementIds(new HashSet<>()) // 👈 Initialize here
+                    .build());
+
+    // Ensure it's initialized even if found from DB but null inside
+    if (read.getAnnouncementIds() == null) {
+      read.setAnnouncementIds(new HashSet<>());
     }
 
-    public void markAsRead(String userId, String announcementId) {
-        AnnouncementRead read = readRepo.findById(userId)
-                .orElse(AnnouncementRead.builder().userId(userId).build());
+    read.getAnnouncementIds().addAll(allIds);
+    readRepo.save(read);
+  }
 
-        read.getAnnouncementIds().add(announcementId);
-        readRepo.save(read);
+  public AnnouncementModel createWithTargets(
+      String quizSurveyId, String message, List<String> targetUser) {
+
+    String title = "System Notification"; // Default title
+
+    if (quizSurveyId != null && !quizSurveyId.isEmpty()) {
+      QuizSurveyModel quizSurveyModel =
+          quizSurveyRepository
+              .findById(quizSurveyId)
+              .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
+
+      quizSurveyModel.setIsAnnounced(true);
+      quizSurveyRepository.save(quizSurveyModel);
+
+      title = quizSurveyModel.getTitle();
     }
 
-    public void markAllAsRead(String userId) {
-        userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Invalid username"));
-
-        List<AnnouncementModel> announcements = announcementRepo.findAll();
-        Set<String> allIds = announcements.stream()
-                .map(AnnouncementModel::getId)
-                .collect(Collectors.toSet());
-
-        AnnouncementRead read = readRepo.findById(userId)
-                .orElse(AnnouncementRead.builder()
-                        .userId(userId)
-                        .announcementIds(new HashSet<>()) // 👈 Initialize here
-                        .build());
-
-        // Ensure it's initialized even if found from DB but null inside
-        if (read.getAnnouncementIds() == null) {
-            read.setAnnouncementIds(new HashSet<>());
-        }
-
-        read.getAnnouncementIds().addAll(allIds);
-        readRepo.save(read);
-    }
-
-    public AnnouncementModel createWithTargets(String quizSurveyId, String message, List<String> targetUser) {
-
-        String title = "System Notification"; // Default title
-
-        if (quizSurveyId != null && !quizSurveyId.isEmpty()) {
-            QuizSurveyModel quizSurveyModel = quizSurveyRepository.findById(quizSurveyId)
-                    .orElseThrow(() -> new RuntimeException("Invalid quiz survey Id"));
-
-            quizSurveyModel.setIsAnnounced(true);
-            quizSurveyRepository.save(quizSurveyModel);
-
-            title = quizSurveyModel.getTitle();
-        }
-
-        return announcementRepo.save(AnnouncementModel.builder()
-                .title(title)
-                .message(message)
-                .targetUser(targetUser)
-                .build());
-    }}
+    return announcementRepo.save(
+        AnnouncementModel.builder().title(title).message(message).targetUser(targetUser).build());
+  }
+}
