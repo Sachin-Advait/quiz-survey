@@ -250,7 +250,6 @@ public class QuizSurveyService {
         quizSurveyRepo.deleteById(id);
     }
 
-    // Get Quiz Score Summary
     public QuizScoreSummaryDTO quizScoreSummary(String quizSurveyId) {
         List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
         if (responses.isEmpty()) {
@@ -263,7 +262,7 @@ public class QuizSurveyService {
                 .collect(Collectors.toMap(
                         ResponseModel::getUserId,
                         r -> r,
-                        (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2 // keep higher score
+                        (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2
                 ));
 
         Collection<ResponseModel> uniqueResponses = bestAttempts.values();
@@ -283,10 +282,17 @@ public class QuizSurveyService {
 
         double avgScore = totalAttempts > 0 ? (double) totalScore / totalAttempts : 0.0;
 
-        // ✅ Get top 3 scorers (unique users only)
-        List<Map<String, Object>> topScorers = uniqueResponses.stream()
+        List<ResponseModel> sorted = uniqueResponses.stream()
                 .filter(r -> r.getScore() != null)
-                .sorted((a, b) -> b.getScore().compareTo(a.getScore()))
+                .sorted(Comparator
+                        .comparing(ResponseModel::getScore, Comparator.reverseOrder())
+                        .thenComparing(ResponseModel::getFinishTime, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(ResponseModel::getSubmittedAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                )
+                .collect(Collectors.toList());
+
+        // ✅ Get only top 3 (after proper tie-breaking)
+        List<Map<String, Object>> topScorers = sorted.stream()
                 .limit(3)
                 .map(r -> {
                     Map<String, Object> map = new HashMap<>();
@@ -294,6 +300,8 @@ public class QuizSurveyService {
                     map.put("userId", r.getUserId());
                     map.put("score", r.getScore());
                     map.put("maxScore", r.getMaxScore());
+                    map.put("finishTime", r.getFinishTime());
+                    map.put("submittedAt", r.getSubmittedAt());
                     return map;
                 })
                 .collect(Collectors.toList());
