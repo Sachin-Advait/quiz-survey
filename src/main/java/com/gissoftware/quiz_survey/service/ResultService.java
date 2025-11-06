@@ -288,7 +288,7 @@ public class ResultService {
                                 ? q.getCorrectAnswer().toString() : null)
                         .selectedOptions(selectedOpt)
                         .arabicTitle(q.getArabicTitle())
-                        .mark(q.getMark())
+                        .mark(q.getMarks())
                         .build());
             }
         }

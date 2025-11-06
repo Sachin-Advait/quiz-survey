@@ -63,12 +63,6 @@ public class ResponseService {
             }
         }
 
-        if (qs.getType().equalsIgnoreCase("quiz")) {
-            if (existingResponses.size() > qs.getMaxRetake()) {
-                throw new IllegalStateException("You have reach the limit on this quiz.");
-            }
-        }
-
         // Handle response
         return switch (qs.getType().toLowerCase()) {
             case "survey" -> handleSurveyResponse(qs, request);
@@ -82,16 +76,19 @@ public class ResponseService {
         Map<String, Object> answerKey = quiz.getAnswerKey();
 
         Map<String, String> questionTypes = new HashMap<>();
+        Map<String, Integer> questionMarks = new HashMap<>();
+
         quiz.getDefinitionJson().getPages().forEach(page ->
-                page.getElements().forEach(el -> questionTypes.put(el.getTitle(), el.getType()))
+                page.getElements().forEach(el -> {
+                    questionTypes.put(el.getName(), el.getType());
+                    questionMarks.put(el.getName(), el.getMarks() != null ? el.getMarks() : 1); // default mark = 1
+                })
         );
 
-        ScoringUtil.ScoringResult result = ScoringUtil.score(given, answerKey, questionTypes);
+        ScoringUtil.ScoringResult result = ScoringUtil.score(given, answerKey, questionTypes, questionMarks);
 
         UserModel user = userRepository.findById(request.getUserId())
                 .orElseThrow(() -> new RuntimeException("Invalid userId"));
-
-        List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), user.getId());
 
         quiz.setMaxRetake(quiz.getMaxRetake() - 1);
         quizSurveyRepo.save(quiz);
@@ -103,7 +100,7 @@ public class ResponseService {
                 .username(user.getUsername())
                 .answers(request.getAnswers())
                 .score(result.score())
-                .maxScore(result.max())
+                .maxScore(quiz.getMaxScore())
                 .finishTime(request.getFinishTime())
                 .build());
     }

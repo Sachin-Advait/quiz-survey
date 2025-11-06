@@ -9,45 +9,46 @@ public class ScoringUtil {
     public static ScoringResult score(
             Map<String, Object> given,
             Map<String, Object> answerKey,
-            Map<String, String> questionTypes) {
-        if (answerKey == null) return new ScoringResult(0, 0);
+            Map<String, String> questionTypes,
+            Map<String, Integer> marks) {
+        if (answerKey == null) return new ScoringResult(0);
 
-        int max = answerKey.size();
-        int correct = 0;
+        int totalScore = 0;
 
         for (var entry : answerKey.entrySet()) {
             String question = entry.getKey();
             Object expected = entry.getValue();
             Object ans = given.get(question);
             String type = questionTypes.getOrDefault(question, "text");
+            int mark = marks.get(question);
+
 
             if (ans == null) continue;
 
+            boolean isCorrect = false;
             switch (type) {
                 case "checkbox" -> {
                     if (ans instanceof Collection<?> givenSet && expected instanceof Collection<?> expectedSet) {
                         if (new HashSet<>(givenSet).equals(new HashSet<>(expectedSet))) {
-                            correct++;
+                            isCorrect = true;
                         }
-                    }
-                }
-                case "boolean" -> {
-                    String normalizedAns = ans.toString().equalsIgnoreCase("true") ? "yes" : "no";
-                    if (expected.toString().toLowerCase().equalsIgnoreCase(normalizedAns)) {
-                        correct++;
                     }
                 }
                 default -> {
                     if (ans.toString().equalsIgnoreCase(expected.toString())) {
-                        correct++;
+                        isCorrect = true;
                     }
                 }
             }
+
+            if (isCorrect) {
+                totalScore += mark;
+            }
         }
 
-        return new ScoringResult(correct, max);
+        return new ScoringResult(totalScore);
     }
 
-    public record ScoringResult(int score, int max) {
+    public record ScoringResult(int score) {
     }
 }
