@@ -9,6 +9,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -22,24 +23,39 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Explicit configuration
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // OPTIONS first
-                        .requestMatchers("/api/**", "/ws/**").permitAll()
-                        .anyRequest().authenticated()
+                        // Only Kong should call backend, allow OPTIONS for CORS
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                        // Protect all APIs - NO PUBLIC ACCESS
+                        .requestMatchers("/user/**").authenticated()
+                        .requestMatchers("/admin/**").authenticated()
+                        .requestMatchers("/ws/**").authenticated()
+
+                        .anyRequest().denyAll()
                 )
+                // Require a trusted header from Kong
+                .addFilterBefore(new KongAuthFilter(), BasicAuthenticationFilter.class)
                 .build();
     }
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:8000", "https://quiz-survey.netlify.app", "http://localhost:3000", "https://185.177.116.176", "http://185.177.116.176"));
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://localhost:8000",
+                "https://quiz-survey.netlify.app",
+                "http://localhost:3000"
+        ));
+
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
