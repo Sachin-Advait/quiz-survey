@@ -3,6 +3,7 @@ package com.gissoftware.quiz_survey.config;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.util.List;
 
@@ -13,7 +14,8 @@ public class HostValidationFilter implements Filter {
             "localhost:8082",
             "localhost:8443",
             "quiz-survey.onrender.com",
-            "185.177.116.176"
+            "185.177.116.176",
+            "quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om"
     );
 
     @Override
