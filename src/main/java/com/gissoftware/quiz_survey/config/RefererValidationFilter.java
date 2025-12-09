@@ -16,6 +16,8 @@ public class RefererValidationFilter implements Filter {
             "http://quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om"
     );
 
+    private static final String ALLOW_OMANTEL_PREFIX = "https://omantelsip.omantel.om/";
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -23,7 +25,19 @@ public class RefererValidationFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         String referer = req.getHeader("Referer");
 
-        if (referer == null || ALLOWED_REFERERS.stream().noneMatch(referer::startsWith)) {
+        boolean allowed = false;
+
+        if (referer != null) {
+            // check hardcoded allowed referers
+            allowed = ALLOWED_REFERERS.stream().anyMatch(referer::startsWith);
+
+            // check any URL starting with the omantelsip prefix
+            if (!allowed && referer.startsWith(ALLOW_OMANTEL_PREFIX)) {
+                allowed = true;
+            }
+        }
+
+        if (!allowed) {
             ((HttpServletResponse) response).sendError(403, "Invalid Referer header");
             return;
         }

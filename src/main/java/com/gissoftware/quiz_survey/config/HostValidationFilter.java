@@ -15,7 +15,8 @@ public class HostValidationFilter implements Filter {
             "localhost:8443",
             "quiz-survey.onrender.com",
             "185.177.116.176",
-            "quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om"
+            "quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om",
+            "omantelsip.omantel.om"
     );
 
     @Override

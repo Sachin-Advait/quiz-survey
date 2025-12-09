@@ -9,11 +9,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
 
+@Component
 public class KongAuthFilter extends OncePerRequestFilter {
 
     @Autowired
@@ -30,6 +32,18 @@ public class KongAuthFilter extends OncePerRequestFilter {
         String kongSecret = request.getHeader("X-Kong-Authorization");
         String userId = request.getHeader("X-User-Id");
         String role = request.getHeader("X-User-Role");
+
+        System.out.println("===== Incoming Request Headers =====");
+        request.getHeaderNames().asIterator().forEachRemaining(name -> {
+            System.out.println(name + " = " + request.getHeader(name));
+        });
+        System.out.println("====================================");
+
+        System.out.println("X-Kong-Authorization = " + request.getHeader("X-Kong-Authorization"));
+        System.out.println("X-User-Id            = " + request.getHeader("X-User-Id"));
+        System.out.println("X-User-Role          = " + request.getHeader("X-User-Role"));
+        System.out.println("Internal SECRET          = " + kongInternalSecret);
+
 
         // Verify request really came from Kong
         if (kongSecret == null || !kongSecret.equals(kongInternalSecret)) {

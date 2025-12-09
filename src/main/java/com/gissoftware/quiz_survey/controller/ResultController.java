@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @AllArgsConstructor
-@RequestMapping("/api")
+@RequestMapping("/api/user")
 @RestController
 public class ResultController {
 
     private final ResultService resultService;
 
-    @GetMapping("/user/quiz-result/{quizSurveyId}")
+    @GetMapping("/quiz-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<QuizResultDTO>> getQuizResultByUserId(
             @PathVariable String quizSurveyId,
             @RequestParam String userId
@@ -30,7 +30,7 @@ public class ResultController {
 
     }
 
-    @GetMapping("/admin/quiz-result/{quizSurveyId}")
+    @GetMapping("/admin-quiz-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<QuizResultAdminDTO>>> getQuizResultsAdmin(@PathVariable String quizSurveyId) {
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true, "Retrieved submitted responses successfully",
@@ -38,7 +38,7 @@ public class ResultController {
         );
     }
 
-    @GetMapping("/admin/survey-result/{quizSurveyId}")
+    @GetMapping("/admin-survey-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultsAdmin(
             @PathVariable String quizSurveyId,
             @RequestParam(required = false) String userId) {
@@ -59,7 +59,7 @@ public class ResultController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/user/survey-result/{quizSurveyId}")
+    @GetMapping("/survey-result/{quizSurveyId}")
     public ResponseEntity<ApiResponseDTO<List<SurveyResultDTO>>> getSurveyResultByUserId(
             @PathVariable String quizSurveyId,
             @RequestParam String userId) {
