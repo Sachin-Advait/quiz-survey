@@ -24,6 +24,7 @@ public class AnnouncementService {
   private final AnnouncementReadRepository readRepo;
   private final QuizSurveyRepository quizSurveyRepository;
   private final UserRepository userRepository;
+  private final FCMService fcmService;
 
   public AnnouncementModel create(String quizSurveyId, String message) {
 
@@ -39,8 +40,27 @@ public class AnnouncementService {
       throw new IllegalArgumentException("Quiz Survey already announced");
     }
 
-    return announcementRepo.save(
-        AnnouncementModel.builder().title(quizSurveyModel.getTitle()).message(message).build());
+    AnnouncementModel saved =
+        announcementRepo.save(
+            AnnouncementModel.builder().title(quizSurveyModel.getTitle()).message(message).build());
+
+    // 🔥 Send push notification to ALL users
+    userRepository
+        .findAll()
+        .forEach(
+            user -> {
+              if (user.getFcmToken() != null) {
+                fcmService.sendNotification(
+                    user.getFcmToken(),
+                    saved.getTitle(),
+                    saved.getMessage(),
+                    "NOTIFICATION", // Category used by your service worker
+                    saved.getId() // Will be "?id=savedId"
+                    );
+              }
+            });
+
+    return saved;
   }
 
   public List<AnnouncementWithReadStatus> getAllWithReadStatus(String userId) {
@@ -116,7 +136,32 @@ public class AnnouncementService {
       title = quizSurveyModel.getTitle();
     }
 
-    return announcementRepo.save(
-        AnnouncementModel.builder().title(title).message(message).targetUser(targetUser).build());
+    AnnouncementModel saved =
+        announcementRepo.save(
+            AnnouncementModel.builder()
+                .title(title)
+                .message(message)
+                .targetUser(targetUser)
+                .build());
+
+    // 🔥 Send notification ONLY to selected users
+    targetUser.forEach(
+        userId -> {
+          userRepository
+              .findById(userId)
+              .ifPresent(
+                  user -> {
+                    if (user.getFcmToken() != null) {
+                      fcmService.sendNotification(
+                          user.getFcmToken(),
+                          saved.getTitle(),
+                          saved.getMessage(),
+                          "NOTIFICATION",
+                          saved.getId());
+                    }
+                  });
+        });
+
+    return saved;
   }
 }

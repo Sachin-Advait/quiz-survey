@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.model;
 
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,8 +11,6 @@ import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.Instant;
-
 @Document(collection = "users")
 @Data
 @NoArgsConstructor
@@ -19,17 +18,17 @@ import java.time.Instant;
 @Builder
 @EnableMongoAuditing
 public class UserModel {
-    @Id
-    private String id;
+  @Id private String id;
 
-    @Indexed(unique = true)
-    private String staffId;
-    private String username;
-    private UserRole role;
-    private String region;
-    private String outlet;
-    private String position;
+  @Indexed(unique = true)
+  private String staffId;
 
-    @CreatedDate
-    private Instant createdAt;
+  private String username;
+  private UserRole role;
+  private String region;
+  private String outlet;
+  private String position;
+
+  @CreatedDate private Instant createdAt;
+  @Builder.Default private String fcmToken = null;
 }

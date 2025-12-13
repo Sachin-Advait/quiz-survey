@@ -1,61 +1,58 @@
 package com.gissoftware.quiz_survey.controller;
 
-
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.service.UserService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+  private final UserService userService;
 
-    @GetMapping
-    public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> getAllUsers(
-            @RequestParam(required = false) String region,
-            @RequestParam(required = false) String outlet,
-            @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size
-    ) {
-        List<UserResponseDTO> response = userService.getAllUsers(region, outlet, page, size);
-        return ResponseEntity.ok(new ApiResponseDTO<>(true, "Retrieved all users", response));
+  @GetMapping
+  public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> getAllUsers(
+      @RequestParam(required = false) String region,
+      @RequestParam(required = false) String outlet,
+      @RequestParam(required = false) Integer page,
+      @RequestParam(required = false) Integer size) {
+    List<UserResponseDTO> response = userService.getAllUsers(region, outlet, page, size);
+    return ResponseEntity.ok(new ApiResponseDTO<>(true, "Retrieved all users", response));
+  }
+
+  @PostMapping("/sync-user")
+  public ResponseEntity<ApiResponseDTO<UserResponseDTO>> syncUser(@RequestBody UserModel user) {
+    UserModel registeredUser = userService.syncUser(user);
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(true, "Sync user successful", userService.toDto(registeredUser)));
+  }
+
+  @PutMapping("/{id}")
+  public ResponseEntity<ApiResponseDTO<UserResponseDTO>> updateUser(
+      @PathVariable String id, @RequestBody UserModel request) {
+
+    UserModel updated = userService.updateUser(id, request);
+    UserResponseDTO response = userService.toDto(updated);
+
+    return ResponseEntity.ok(new ApiResponseDTO<>(true, "User updated successfully", response));
+  }
+
+  @DeleteMapping("/{id}")
+  public ResponseEntity<?> deleteUserById(@PathVariable String id) {
+    UserModel user = userService.deleteUserById(id);
+    if (user == null) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+          .body(new ApiResponseDTO<>(false, "User not found", null));
     }
+    return ResponseEntity.ok(new ApiResponseDTO<>(true, "User deleted successfully", null));
+  }
 
-    @PostMapping("/sync-user")
-    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> syncUser(@RequestBody UserModel user) {
-        UserModel registeredUser = userService.syncUser(user);
-        return ResponseEntity.ok(
-                new ApiResponseDTO<>(true, "Sync user successful", userService.toDto(registeredUser))
-        );
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> updateUser(
-            @PathVariable String id,
-            @RequestBody UserModel request) {
-
-        UserModel updated = userService.updateUser(id, request);
-        UserResponseDTO response = userService.toDto(updated);
-
-        return ResponseEntity.ok(new ApiResponseDTO<>(true, "User updated successfully", response));
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteUserById(@PathVariable String id) {
-        UserModel user = userService.deleteUserById(id);
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(new ApiResponseDTO<>(false, "User not found", null));
-        }
-        return ResponseEntity.ok(new ApiResponseDTO<>(true, "User deleted successfully", null));
-    }
+  
 }
