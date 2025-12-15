@@ -250,7 +250,7 @@ public class QuizSurveyService {
 
                             // CATEGORY MUST MATCH service worker routing
                             fcmService.sendNotification(
-                                user.getFcmToken(), title, body, "NOTIFICATION", savedQuiz.getId());
+                                user.getFcmToken(), title, body, "QUIZ", savedQuiz.getId());
                             System.out.println("Notification sended");
                           }
                         });

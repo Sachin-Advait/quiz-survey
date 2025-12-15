@@ -54,7 +54,7 @@ public class AnnouncementService {
                     user.getFcmToken(),
                     saved.getTitle(),
                     saved.getMessage(),
-                    "NOTIFICATION", // Category used by your service worker
+                    "QUIZ", // Category used by your service worker
                     saved.getId() // Will be "?id=savedId"
                     );
               }
@@ -156,7 +156,7 @@ public class AnnouncementService {
                           user.getFcmToken(),
                           saved.getTitle(),
                           saved.getMessage(),
-                          "NOTIFICATION",
+                          "QUIZ",
                           saved.getId());
                     }
                   });
