@@ -26,18 +26,15 @@ public class ScoringUtil {
             if (ans == null) continue;
 
             boolean isCorrect = false;
-            switch (type) {
-                case "checkbox" -> {
-                    if (ans instanceof Collection<?> givenSet && expected instanceof Collection<?> expectedSet) {
-                        if (new HashSet<>(givenSet).equals(new HashSet<>(expectedSet))) {
-                            isCorrect = true;
-                        }
-                    }
-                }
-                default -> {
-                    if (ans.toString().equalsIgnoreCase(expected.toString())) {
+            if (type.equals("checkbox")) {
+                if (ans instanceof Collection<?> givenSet && expected instanceof Collection<?> expectedSet) {
+                    if (new HashSet<>(givenSet).equals(new HashSet<>(expectedSet))) {
                         isCorrect = true;
                     }
+                }
+            } else {
+                if (ans.toString().equalsIgnoreCase(expected.toString())) {
+                    isCorrect = true;
                 }
             }
 
