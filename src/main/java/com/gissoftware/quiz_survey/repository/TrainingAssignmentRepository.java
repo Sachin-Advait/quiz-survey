@@ -11,6 +11,8 @@ public interface TrainingAssignmentRepository extends MongoRepository<TrainingAs
 
   List<TrainingAssignment> findByUserId(String userId);
 
+  List<TrainingAssignment> findByTrainingId(String trainingId);
+
   Optional<TrainingAssignment> findByUserIdAndTrainingId(String userId, String trainingId);
 
   long countByTrainingId(String trainingId);

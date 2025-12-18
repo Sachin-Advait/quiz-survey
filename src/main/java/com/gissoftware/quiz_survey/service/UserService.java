@@ -4,8 +4,7 @@ import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.model.UserRole;
 import com.gissoftware.quiz_survey.repository.UserRepository;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -109,4 +108,22 @@ public class UserService {
     }
     return null;
   }
+
+
+    public List<String> getAllRegions() {
+        List<UserModel> users = userRepository.findAllRegions();
+
+        Set<String> regionSet =
+                users.stream()
+                        .map(UserModel::getRegion)
+                        .filter(Objects::nonNull)
+                        .map(String::toLowerCase)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> regions = new ArrayList<>();
+        regions.add("all");
+        regions.addAll(regionSet);
+
+        return regions;
+    }
 }

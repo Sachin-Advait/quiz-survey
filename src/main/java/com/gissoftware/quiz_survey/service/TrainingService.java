@@ -1,12 +1,16 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.dto.TrainingEngagementDTO;
 import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
+import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.TrainingAssignmentRepository;
 import com.gissoftware.quiz_survey.repository.TrainingMaterialRepository;
+import com.gissoftware.quiz_survey.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -16,6 +20,7 @@ public class TrainingService {
 
   private final TrainingMaterialRepository materialRepo;
   private final TrainingAssignmentRepository assignmentRepo;
+  private final UserRepository userRepo;
 
   // ================= ADMIN =================
 
@@ -138,4 +143,36 @@ public class TrainingService {
 
     return assignmentRepo.save(assignment);
   }
+
+    public List<TrainingEngagementDTO> getEngagement(String trainingId) {
+
+        List<TrainingAssignment> assignments =
+                trainingId != null
+                        ? assignmentRepo.findByTrainingId(trainingId)
+                        : assignmentRepo.findAll();
+
+        return assignments.stream()
+                .map(a -> {
+                    UserModel user =
+                            userRepo.findById(a.getUserId()).orElse(null);
+
+                    TrainingMaterial material =
+                            materialRepo.findById(a.getTrainingId()).orElse(null);
+
+                    if (user == null || material == null) return null;
+
+                    
+
+                    return TrainingEngagementDTO.builder()
+                            .userId(user.getId())
+                            .learner(user.getUsername())
+                            .trainingId(material.getId())
+                            .video(material.getTitle())
+                            .progress(a.getProgress())
+                            .status(a.getStatus())
+                            .build();
+                })
+                .filter(Objects::nonNull)
+                .toList();
+    }
 }

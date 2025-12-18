@@ -1,8 +1,10 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.ClientUserMappingDTO;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.UserModel;
+import com.gissoftware.quiz_survey.service.UserClientService;
 import com.gissoftware.quiz_survey.service.UserService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 public class UserController {
 
   private final UserService userService;
+  private final UserClientService userClientService;
 
   @GetMapping
   public ResponseEntity<ApiResponseDTO<List<UserResponseDTO>>> getAllUsers(
@@ -54,5 +57,17 @@ public class UserController {
     return ResponseEntity.ok(new ApiResponseDTO<>(true, "User deleted successfully", null));
   }
 
-  
+  @GetMapping("/regions")
+  public ResponseEntity<ApiResponseDTO<List<String>>> getAllRegions() {
+    List<String> regions = userService.getAllRegions();
+    return ResponseEntity.ok(new ApiResponseDTO<>(true, "Regions fetched successfully", regions));
+  }
+
+  @GetMapping("/user-id/by-client/{staffId}")
+  public ResponseEntity<ApiResponseDTO<ClientUserMappingDTO>> getUserIdByClientId(
+      @PathVariable String staffId) {
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(
+            true, "User id fetched successfully", userClientService.getUserIdByClientId(staffId)));
+  }
 }

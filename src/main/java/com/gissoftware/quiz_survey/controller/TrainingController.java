@@ -1,5 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
+import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.TrainingEngagementDTO;
 import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
@@ -65,5 +67,14 @@ public class TrainingController {
     Integer progress = (Integer) payload.get("progress");
 
     return ResponseEntity.ok(trainingService.updateProgress(userId, trainingId, progress));
+  }
+
+  @GetMapping("/engagement")
+  public ResponseEntity<ApiResponseDTO<List<TrainingEngagementDTO>>> getEngagement(
+      @RequestParam(required = false) String trainingId) {
+
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(
+            true, "Engagement fetched successfully", trainingService.getEngagement(trainingId)));
   }
 }
