@@ -11,4 +11,9 @@ public interface TrainingMaterialRepository extends MongoRepository<TrainingMate
   List<TrainingMaterial> findByRegion(String region);
 
   List<TrainingMaterial> findByRegionIn(List<String> regions);
+
+  boolean existsByCloudinaryPublicId(String cloudinaryPublicId);
+
+  List<TrainingMaterial> findByCloudinaryResourceTypeAndDuration(
+      String cloudinaryResourceType, String duration);
 }
