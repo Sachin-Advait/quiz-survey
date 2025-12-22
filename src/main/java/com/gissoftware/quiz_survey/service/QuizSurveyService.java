@@ -219,45 +219,10 @@ public class QuizSurveyService {
         }
 
         model.setIsAnnounced(model.getAnnouncementMode() == AnnouncementMode.IMMEDIATE);
-
         QuizSurveyModel savedQuiz = quizSurveyRepo.save(model);
+        quizSurveySocketController.pushNewSurvey(savedQuiz.getId(), savedQuiz.getIsMandatory(), savedQuiz.getTargetedUsers());
 
-        // 🔥 PUSH REALTIME WEB SOCKET EVENT
-        quizSurveySocketController.pushNewSurvey(
-                savedQuiz.getId(), savedQuiz.getIsMandatory(), savedQuiz.getTargetedUsers());
-
-        // 🔥 PUSH NOTIFICATION (FCM)
-        if (savedQuiz.getTargetedUsers() != null) {
-            savedQuiz
-                    .getTargetedUsers()
-                    .forEach(
-                            userId -> {
-                                userRepository
-                                        .findById(userId)
-                                        .ifPresent(
-                                                user -> {
-                                                    if (user.getFcmToken() != null && !user.getFcmToken().isBlank()) {
-
-                                                        String title =
-                                                                savedQuiz.getType().equalsIgnoreCase("Quiz")
-                                                                        ? "New Quiz Assigned"
-                                                                        : "New Survey Assigned";
-
-                                                        String body =
-                                                                "A new "
-                                                                        + savedQuiz.getType().toLowerCase()
-                                                                        + " has been assigned to you: "
-                                                                        + savedQuiz.getTitle();
-
-                                                        // CATEGORY MUST MATCH service worker routing
-                                                        fcmService.sendNotification(
-                                                                user.getFcmToken(), title, body, "QUIZ", savedQuiz.getId());
-                                                        System.out.println("Notification sended");
-                                                    }
-                                                });
-                            });
-        }
-
+        fcmService.notifyQuizSurveyAssigned(savedQuiz);
         return savedQuiz;
     }
 
