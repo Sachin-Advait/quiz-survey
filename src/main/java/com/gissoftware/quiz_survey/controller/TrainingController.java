@@ -6,75 +6,96 @@ import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import com.gissoftware.quiz_survey.service.TrainingService;
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/user/training")
 @RequiredArgsConstructor
 public class TrainingController {
 
-  private final TrainingService trainingService;
+    private final TrainingService trainingService;
 
-  // ================= ADMIN =================
+    // ================= ADMIN =================
+    @PostMapping
+    public ResponseEntity<ApiResponseDTO<TrainingMaterial>> uploadTraining(@RequestBody TrainingMaterial material) {
+        TrainingMaterial created = trainingService.uploadTraining(material);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Training uploaded successfully", created)
+        );
+    }
 
-  @PostMapping
-  public ResponseEntity<TrainingMaterial> uploadTraining(@RequestBody TrainingMaterial material) {
-    return ResponseEntity.ok(trainingService.uploadTraining(material));
-  }
+    @GetMapping
+    public ResponseEntity<ApiResponseDTO<List<TrainingMaterial>>> getAllTrainings() {
+        List<TrainingMaterial> materials = trainingService.getAllMaterials();
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "All trainings fetched successfully", materials)
+        );
+    }
 
-  @GetMapping
-  public ResponseEntity<List<TrainingMaterial>> getAllTrainings() {
-    return ResponseEntity.ok(trainingService.getAllMaterials());
-  }
+    @GetMapping("/region/{region}")
+    public ResponseEntity<ApiResponseDTO<List<TrainingMaterial>>> getByRegion(@PathVariable String region) {
+        List<TrainingMaterial> materials = trainingService.getMaterialsByRegion(region);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Trainings fetched for region", materials)
+        );
+    }
 
-  @GetMapping("/region/{region}")
-  public ResponseEntity<List<TrainingMaterial>> getByRegion(@PathVariable String region) {
-    return ResponseEntity.ok(trainingService.getMaterialsByRegion(region));
-  }
+    @PostMapping("/assign")
+    public ResponseEntity<ApiResponseDTO<Void>> assignTraining(@RequestBody Map<String, Object> payload) {
 
-  @PostMapping("/assign")
-  public ResponseEntity<Void> assignTraining(@RequestBody Map<String, Object> payload) {
-    String trainingId = (String) payload.get("trainingId");
-    List<String> userIds = (List<String>) payload.get("userIds");
-    Instant dueDate = Instant.parse((String) payload.get("dueDate"));
+        String trainingId = (String) payload.get("trainingId");
+        List<String> userIds = (List<String>) payload.get("userIds");
+        Instant dueDate = Instant.parse((String) payload.get("dueDate"));
+        trainingService.assignTraining(trainingId, userIds, dueDate);
 
-    trainingService.assignTraining(trainingId, userIds, dueDate);
-    return ResponseEntity.ok().build();
-  }
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Training assigned successfully", null)
+        );
+    }
 
-  // ================= USER =================
+    // ================= USER =================
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<ApiResponseDTO<List<TrainingAssignment>>> getUserTrainings(@PathVariable String userId) {
+        List<TrainingAssignment> assignments = trainingService.getUserTrainings(userId);
 
-  @GetMapping("/user/{userId}")
-  public ResponseEntity<List<TrainingAssignment>> getUserTrainings(@PathVariable String userId) {
-    return ResponseEntity.ok(trainingService.getUserTrainings(userId));
-  }
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "User trainings fetched successfully", assignments)
+        );
+    }
 
-  @GetMapping("/user/{userId}/details")
-  public ResponseEntity<List<UserTrainingDTO>> getUserTrainingDetails(@PathVariable String userId) {
-    return ResponseEntity.ok(trainingService.getUserTrainingDetails(userId));
-  }
+    @GetMapping("/user/{userId}/details")
+    public ResponseEntity<ApiResponseDTO<List<UserTrainingDTO>>> getUserTrainingDetails(@PathVariable String userId) {
+        List<UserTrainingDTO> details = trainingService.getUserTrainingDetails(userId);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "User training details fetched successfully", details)
+        );
+    }
 
-  @PostMapping("/progress")
-  public ResponseEntity<TrainingAssignment> updateProgress(
-      @RequestBody Map<String, Object> payload) {
-    String userId = (String) payload.get("userId");
-    String trainingId = (String) payload.get("trainingId");
-    Integer progress = (Integer) payload.get("progress");
+    @PostMapping("/progress")
+    public ResponseEntity<ApiResponseDTO<TrainingAssignment>> updateProgress(@RequestBody Map<String, Object> payload) {
 
-    return ResponseEntity.ok(trainingService.updateProgress(userId, trainingId, progress));
-  }
+        String userId = (String) payload.get("userId");
+        String trainingId = (String) payload.get("trainingId");
+        Integer progress = (Integer) payload.get("progress");
 
-  @GetMapping("/engagement")
-  public ResponseEntity<ApiResponseDTO<List<TrainingEngagementDTO>>> getEngagement(
-      @RequestParam(required = false) String trainingId) {
+        TrainingAssignment updated = trainingService.updateProgress(userId, trainingId, progress);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Training progress updated successfully", updated)
+        );
+    }
 
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(
-            true, "Engagement fetched successfully", trainingService.getEngagement(trainingId)));
-  }
+    @GetMapping("/engagement")
+    public ResponseEntity<ApiResponseDTO<List<TrainingEngagementDTO>>> getEngagement(
+            @RequestParam(required = false) String trainingId) {
+        List<TrainingEngagementDTO> engagement = trainingService.getEngagement(trainingId);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Engagement fetched successfully", engagement)
+        );
+    }
 }
