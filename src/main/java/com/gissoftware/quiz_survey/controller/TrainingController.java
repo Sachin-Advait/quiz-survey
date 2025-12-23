@@ -2,6 +2,7 @@ package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
 import com.gissoftware.quiz_survey.dto.TrainingEngagementDTO;
+import com.gissoftware.quiz_survey.dto.TrainingUploadAssignDTO;
 import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
@@ -21,11 +22,20 @@ public class TrainingController {
   private final TrainingService trainingService;
 
   // ================= ADMIN =================
-
   @PostMapping
-  public ResponseEntity<TrainingMaterial> uploadTraining(@RequestBody TrainingMaterial material) {
-    return ResponseEntity.ok(trainingService.uploadTraining(material));
+  public ResponseEntity<TrainingMaterial> uploadTraining(
+      @RequestBody TrainingUploadAssignDTO request) {
+
+    TrainingMaterial savedMaterial = trainingService.uploadAndAssign(request);
+
+    return ResponseEntity.ok(savedMaterial);
   }
+
+  //  @PostMapping
+  //  public ResponseEntity<TrainingMaterial> uploadTraining(@RequestBody TrainingMaterial material)
+  // {
+  //    return ResponseEntity.ok(trainingService.uploadTraining(material));
+  //  }
 
   @GetMapping
   public ResponseEntity<List<TrainingMaterial>> getAllTrainings() {

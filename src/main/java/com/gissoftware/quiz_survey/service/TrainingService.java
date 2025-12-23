@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.dto.TrainingEngagementDTO;
+import com.gissoftware.quiz_survey.dto.TrainingUploadAssignDTO;
 import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
@@ -23,6 +24,50 @@ public class TrainingService {
   private final UserRepository userRepo;
 
   // ================= ADMIN =================
+
+  public TrainingMaterial uploadAndAssign(TrainingUploadAssignDTO request) {
+
+    TrainingMaterial material = request.getMaterial();
+
+    // ---------- Upload ----------
+    material.setAssignedTo(0);
+    material.setCompletionRate(0);
+    material.setViews(0);
+    material.setUploadDate(Instant.now());
+
+    TrainingMaterial savedMaterial = materialRepo.save(material);
+
+    // ---------- Assign (optional) ----------
+    if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+
+      for (String userId : request.getUserIds()) {
+
+        boolean alreadyAssigned =
+            assignmentRepo.findByUserIdAndTrainingId(userId, savedMaterial.getId()).isPresent();
+
+        if (alreadyAssigned) continue;
+
+        TrainingAssignment assignment =
+            TrainingAssignment.builder()
+                .userId(userId)
+                .trainingId(savedMaterial.getId())
+                .progress(0)
+                .status("not-started")
+                .dueDate(request.getDueDate())
+                .assignedAt(Instant.now())
+                .build();
+
+        assignmentRepo.save(assignment);
+      }
+
+      long totalAssigned = assignmentRepo.countByTrainingId(savedMaterial.getId());
+
+      savedMaterial.setAssignedTo((int) totalAssigned);
+      materialRepo.save(savedMaterial);
+    }
+
+    return savedMaterial;
+  }
 
   public TrainingMaterial uploadTraining(TrainingMaterial material) {
     material.setAssignedTo(0);
@@ -144,35 +189,30 @@ public class TrainingService {
     return assignmentRepo.save(assignment);
   }
 
-    public List<TrainingEngagementDTO> getEngagement(String trainingId) {
+  public List<TrainingEngagementDTO> getEngagement(String trainingId) {
 
-        List<TrainingAssignment> assignments =
-                trainingId != null
-                        ? assignmentRepo.findByTrainingId(trainingId)
-                        : assignmentRepo.findAll();
+    List<TrainingAssignment> assignments =
+        trainingId != null ? assignmentRepo.findByTrainingId(trainingId) : assignmentRepo.findAll();
 
-        return assignments.stream()
-                .map(a -> {
-                    UserModel user =
-                            userRepo.findById(a.getUserId()).orElse(null);
+    return assignments.stream()
+        .map(
+            a -> {
+              UserModel user = userRepo.findById(a.getUserId()).orElse(null);
 
-                    TrainingMaterial material =
-                            materialRepo.findById(a.getTrainingId()).orElse(null);
+              TrainingMaterial material = materialRepo.findById(a.getTrainingId()).orElse(null);
 
-                    if (user == null || material == null) return null;
+              if (user == null || material == null) return null;
 
-                    
-
-                    return TrainingEngagementDTO.builder()
-                            .userId(user.getId())
-                            .learner(user.getUsername())
-                            .trainingId(material.getId())
-                            .video(material.getTitle())
-                            .progress(a.getProgress())
-                            .status(a.getStatus())
-                            .build();
-                })
-                .filter(Objects::nonNull)
-                .toList();
-    }
+              return TrainingEngagementDTO.builder()
+                  .userId(user.getId())
+                  .learner(user.getUsername())
+                  .trainingId(material.getId())
+                  .video(material.getTitle())
+                  .progress(a.getProgress())
+                  .status(a.getStatus())
+                  .build();
+            })
+        .filter(Objects::nonNull)
+        .toList();
+  }
 }
