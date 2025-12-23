@@ -9,210 +9,177 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.TrainingAssignmentRepository;
 import com.gissoftware.quiz_survey.repository.TrainingMaterialRepository;
 import com.gissoftware.quiz_survey.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class TrainingService {
 
-  private final TrainingMaterialRepository materialRepo;
-  private final TrainingAssignmentRepository assignmentRepo;
-  private final UserRepository userRepo;
+    private final TrainingMaterialRepository materialRepo;
+    private final TrainingAssignmentRepository assignmentRepo;
+    private final UserRepository userRepo;
+    private final FCMService fcmService;
 
-  // ================= ADMIN =================
+    // ================= ADMIN =================
 
-  public TrainingMaterial uploadAndAssign(TrainingUploadAssignDTO request) {
+    public TrainingMaterial uploadAndAssign(TrainingUploadAssignDTO request) {
+        TrainingMaterial material = request.getMaterial();
+        material.setAssignedTo(0);
+        material.setCompletionRate(0);
+        material.setViews(0);
+        material.setUploadDate(Instant.now());
 
-    TrainingMaterial material = request.getMaterial();
+        TrainingMaterial savedMaterial = materialRepo.save(material);
 
-    // ---------- Upload ----------
-    material.setAssignedTo(0);
-    material.setCompletionRate(0);
-    material.setViews(0);
-    material.setUploadDate(Instant.now());
+        if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+            for (String userId : request.getUserIds()) {
+                boolean alreadyAssigned =
+                        assignmentRepo.findByUserIdAndTrainingId(userId, savedMaterial.getId()).isPresent();
+                if (alreadyAssigned) continue;
 
-    TrainingMaterial savedMaterial = materialRepo.save(material);
+                TrainingAssignment assignment = TrainingAssignment.builder()
+                        .userId(userId)
+                        .trainingId(savedMaterial.getId())
+                        .progress(0)
+                        .status("not-started")
+                        .dueDate(request.getDueDate())
+                        .assignedAt(Instant.now())
+                        .build();
+                assignmentRepo.save(assignment);
+            }
 
-    // ---------- Assign (optional) ----------
-    if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
+            long totalAssigned = assignmentRepo.countByTrainingId(savedMaterial.getId());
 
-      for (String userId : request.getUserIds()) {
+            savedMaterial.setAssignedTo((int) totalAssigned);
+            materialRepo.save(savedMaterial);
+        }
 
-        boolean alreadyAssigned =
-            assignmentRepo.findByUserIdAndTrainingId(userId, savedMaterial.getId()).isPresent();
+        return savedMaterial;
+    }
 
-        if (alreadyAssigned) continue;
+    public List<TrainingMaterial> getAllMaterials() {
+        return materialRepo.findAll();
+    }
 
+    public List<TrainingMaterial> getMaterialsByRegion(String region) {
+        if ("all".equalsIgnoreCase(region)) {
+            return materialRepo.findAll();
+        }
+        return materialRepo.findByRegion(region);
+    }
+
+    public void assignTraining(String trainingId, List<String> userIds, Instant dueDate) {
+        for (String userId : userIds) {
+            boolean alreadyAssigned = assignmentRepo.findByUserIdAndTrainingId(userId, trainingId).isPresent();
+            if (alreadyAssigned) continue;
+
+            TrainingAssignment assignment = TrainingAssignment.builder()
+                    .userId(userId)
+                    .trainingId(trainingId)
+                    .progress(0)
+                    .status("not-started")
+                    .dueDate(dueDate)
+                    .assignedAt(Instant.now())
+                    .build();
+
+            assignmentRepo.save(assignment);
+        }
+
+        long totalAssigned = assignmentRepo.countByTrainingId(trainingId);
+        materialRepo.findById(trainingId).ifPresent(
+                material -> {
+                    material.setAssignedTo((int) totalAssigned);
+                    materialRepo.save(material);
+                });
+        fcmService.notifyTrainingAssigned(trainingId, userIds);
+    }
+
+    // ================= USER =================
+    public List<TrainingAssignment> getUserTrainings(String userId) {
+        return assignmentRepo.findByUserId(userId);
+    }
+
+    public List<UserTrainingDTO> getUserTrainingDetails(String userId) {
+        List<TrainingAssignment> assignments = assignmentRepo.findByUserId(userId);
+        return assignments.stream().map(assignment -> {
+                    TrainingMaterial material = materialRepo
+                            .findById(assignment.getTrainingId())
+                            .orElseThrow(() -> new RuntimeException("Training not found"));
+
+                    return new UserTrainingDTO(
+                            assignment.getId(),
+                            material.getId(),
+                            material.getTitle(),
+                            material.getType(),
+                            material.getDuration(),
+                            material.getCloudinaryUrl(),
+                            material.getCloudinaryFormat(),
+                            material.getCloudinaryResourceType(),
+                            assignment.getProgress(),
+                            assignment.getStatus(),
+                            assignment.getDueDate());
+                })
+                .toList();
+    }
+
+    public TrainingAssignment updateProgress(String userId, String trainingId, int progress) {
         TrainingAssignment assignment =
-            TrainingAssignment.builder()
-                .userId(userId)
-                .trainingId(savedMaterial.getId())
-                .progress(0)
-                .status("not-started")
-                .dueDate(request.getDueDate())
-                .assignedAt(Instant.now())
-                .build();
+                assignmentRepo.findByUserIdAndTrainingId(userId, trainingId)
+                        .orElseThrow(() -> new RuntimeException("Training not assigned"));
 
-        assignmentRepo.save(assignment);
-      }
+        int current = assignment.getProgress();
 
-      long totalAssigned = assignmentRepo.countByTrainingId(savedMaterial.getId());
+        if (progress > current) assignment.setProgress(progress);
 
-      savedMaterial.setAssignedTo((int) totalAssigned);
-      materialRepo.save(savedMaterial);
+        if (assignment.getProgress() >= 100) {
+            assignment.setStatus("completed");
+        } else if (progress > 0) {
+            assignment.setStatus("in-progress");
+        }
+        if (assignment.getProgress() >= 100) {
+            long totalAssigned = assignmentRepo.countByTrainingId(trainingId);
+            long completed = assignmentRepo.countByTrainingIdAndStatus(trainingId, "completed");
+
+            materialRepo.findById(trainingId).ifPresent(
+                    material -> {
+                        int rate = totalAssigned == 0 ? 0 : (int) ((completed * 100) / totalAssigned);
+                        material.setCompletionRate(rate);
+                        materialRepo.save(material);
+                    });
+        }
+
+        return assignmentRepo.save(assignment);
     }
 
-    return savedMaterial;
-  }
+    public List<TrainingEngagementDTO> getEngagement(String trainingId) {
+        List<TrainingAssignment> assignments;
+        if (trainingId != null) assignments = assignmentRepo.findByTrainingId(trainingId);
+        else assignments = assignmentRepo.findAll();
 
-  public TrainingMaterial uploadTraining(TrainingMaterial material) {
-    material.setAssignedTo(0);
-    material.setCompletionRate(0);
-    material.setViews(0);
-    material.setUploadDate(Instant.now());
-    return materialRepo.save(material);
-  }
+        return assignments.stream()
+                .map(
+                        a -> {
+                            UserModel user = userRepo.findById(a.getUserId()).orElse(null);
 
-  public List<TrainingMaterial> getAllMaterials() {
-    return materialRepo.findAll();
-  }
+                            TrainingMaterial material = materialRepo.findById(a.getTrainingId()).orElse(null);
 
-  public List<TrainingMaterial> getMaterialsByRegion(String region) {
-    if ("all".equalsIgnoreCase(region)) {
-      return materialRepo.findAll();
+                            if (user == null || material == null) return null;
+
+                            return TrainingEngagementDTO.builder()
+                                    .userId(user.getId())
+                                    .learner(user.getUsername())
+                                    .trainingId(material.getId())
+                                    .video(material.getTitle())
+                                    .progress(a.getProgress())
+                                    .status(a.getStatus())
+                                    .build();
+                        })
+                .filter(Objects::nonNull)
+                .toList();
     }
-    return materialRepo.findByRegion(region);
-  }
-
-  public void assignTraining(String trainingId, List<String> userIds, Instant dueDate) {
-    for (String userId : userIds) {
-
-      boolean alreadyAssigned =
-          assignmentRepo.findByUserIdAndTrainingId(userId, trainingId).isPresent();
-
-      if (alreadyAssigned) continue;
-
-      TrainingAssignment assignment =
-          TrainingAssignment.builder()
-              .userId(userId)
-              .trainingId(trainingId)
-              .progress(0)
-              .status("not-started")
-              .dueDate(dueDate)
-              .assignedAt(Instant.now())
-              .build();
-
-      assignmentRepo.save(assignment);
-    }
-
-    long totalAssigned = assignmentRepo.countByTrainingId(trainingId);
-
-    materialRepo
-        .findById(trainingId)
-        .ifPresent(
-            material -> {
-              material.setAssignedTo((int) totalAssigned);
-              materialRepo.save(material);
-            });
-  }
-
-  // ================= USER =================
-
-  public List<TrainingAssignment> getUserTrainings(String userId) {
-    return assignmentRepo.findByUserId(userId);
-  }
-
-  public List<UserTrainingDTO> getUserTrainingDetails(String userId) {
-
-    List<TrainingAssignment> assignments = assignmentRepo.findByUserId(userId);
-
-    return assignments.stream()
-        .map(
-            assignment -> {
-              TrainingMaterial material =
-                  materialRepo
-                      .findById(assignment.getTrainingId())
-                      .orElseThrow(() -> new RuntimeException("Training not found"));
-
-              return new UserTrainingDTO(
-                  assignment.getId(),
-                  material.getId(),
-                  material.getTitle(),
-                  material.getType(),
-                  material.getDuration(),
-                  material.getCloudinaryUrl(),
-                  material.getCloudinaryFormat(),
-                  material.getCloudinaryResourceType(),
-                  assignment.getProgress(),
-                  assignment.getStatus(),
-                  assignment.getDueDate());
-            })
-        .toList();
-  }
-
-  public TrainingAssignment updateProgress(String userId, String trainingId, int progress) {
-    TrainingAssignment assignment =
-        assignmentRepo
-            .findByUserIdAndTrainingId(userId, trainingId)
-            .orElseThrow(() -> new RuntimeException("Training not assigned"));
-
-    int current = assignment.getProgress();
-
-    if (progress > current) {
-      assignment.setProgress(progress);
-    }
-
-    if (assignment.getProgress() >= 100) {
-      assignment.setStatus("completed");
-
-    } else if (progress > 0) {
-      assignment.setStatus("in-progress");
-    }
-    if (assignment.getProgress() >= 100) {
-      long totalAssigned = assignmentRepo.countByTrainingId(trainingId);
-      long completed = assignmentRepo.countByTrainingIdAndStatus(trainingId, "completed");
-
-      materialRepo
-          .findById(trainingId)
-          .ifPresent(
-              material -> {
-                int rate = totalAssigned == 0 ? 0 : (int) ((completed * 100) / totalAssigned);
-                material.setCompletionRate(rate);
-                materialRepo.save(material);
-              });
-    }
-
-    return assignmentRepo.save(assignment);
-  }
-
-  public List<TrainingEngagementDTO> getEngagement(String trainingId) {
-
-    List<TrainingAssignment> assignments =
-        trainingId != null ? assignmentRepo.findByTrainingId(trainingId) : assignmentRepo.findAll();
-
-    return assignments.stream()
-        .map(
-            a -> {
-              UserModel user = userRepo.findById(a.getUserId()).orElse(null);
-
-              TrainingMaterial material = materialRepo.findById(a.getTrainingId()).orElse(null);
-
-              if (user == null || material == null) return null;
-
-              return TrainingEngagementDTO.builder()
-                  .userId(user.getId())
-                  .learner(user.getUsername())
-                  .trainingId(material.getId())
-                  .video(material.getTitle())
-                  .progress(a.getProgress())
-                  .status(a.getStatus())
-                  .build();
-            })
-        .filter(Objects::nonNull)
-        .toList();
-  }
 }
