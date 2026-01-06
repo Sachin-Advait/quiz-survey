@@ -18,4 +18,6 @@ public interface TrainingAssignmentRepository extends MongoRepository<TrainingAs
   long countByTrainingId(String trainingId);
 
   long countByTrainingIdAndStatus(String trainingId, String status);
+
+  void deleteByTrainingId(String trainingId);
 }

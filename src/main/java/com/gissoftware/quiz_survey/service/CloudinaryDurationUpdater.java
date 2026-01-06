@@ -24,7 +24,7 @@ public class CloudinaryDurationUpdater {
     log.info("⏱️ Running video duration updater using ffprobe");
 
     List<TrainingMaterial> videos =
-        materialRepo.findByCloudinaryResourceTypeAndDuration("video", "N/A");
+        materialRepo.findByCloudinaryResourceTypeAndDurationAndActiveTrue("video", "N/A");
 
     if (videos.isEmpty()) {
       log.info("✅ No videos pending duration update");

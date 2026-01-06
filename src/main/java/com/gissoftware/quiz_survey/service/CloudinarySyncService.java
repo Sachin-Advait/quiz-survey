@@ -107,7 +107,7 @@ public class CloudinarySyncService {
         // ------------------------------------
         // 🔁 Skip already synced assets
         // ------------------------------------
-        if (materialRepo.existsByCloudinaryPublicId(publicId)) {
+        if (materialRepo.existsByCloudinaryPublicIdAndActiveTrue(publicId)) {
           skipped++;
           log.info("SKIPPED (already exists) → {}", publicId);
           continue;

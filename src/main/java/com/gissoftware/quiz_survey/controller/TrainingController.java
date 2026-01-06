@@ -7,13 +7,12 @@ import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import com.gissoftware.quiz_survey.service.TrainingService;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/user/training")
@@ -117,4 +116,31 @@ public class TrainingController {
                 )
         );
     }
+
+    // ================= ADMIN =================
+
+    @PutMapping("/{trainingId}")
+    public ResponseEntity<ApiResponseDTO<TrainingMaterial>> updateTraining(
+            @PathVariable String trainingId,
+            @RequestBody TrainingUploadAssignDTO request) {
+
+        TrainingMaterial updated =
+                trainingService.updateTraining(trainingId, request);
+
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Training updated successfully", updated)
+        );
+    }
+
+    @DeleteMapping("/{trainingId}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteTraining(
+            @PathVariable String trainingId) {
+
+        trainingService.deleteTraining(trainingId);
+
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Training deleted successfully", null)
+        );
+    }
+
 }

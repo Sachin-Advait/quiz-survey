@@ -35,5 +35,8 @@ public class TrainingMaterial {
   private String cloudinaryResourceType;
   private String cloudinaryFormat;
 
+  private Boolean active = true;
+  private Instant deletedAt;
+
   @CreatedDate private Instant uploadDate;
 }
