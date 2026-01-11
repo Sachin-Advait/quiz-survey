@@ -224,39 +224,47 @@ public class TrainingService {
     1️⃣ UPDATE TRAINING META
     ========================= */
 
-    // ✅ Update basic fields (flat payload support)
-    if (request.getMaterial().getTitle() != null) {
-      material.setTitle(request.getMaterial().getTitle());
-    }
+    if (request.getMaterial() != null) {
 
-    if (request.getMaterial().getRegion() != null) {
-      material.setRegion(request.getMaterial().getRegion().toLowerCase());
-    }
+      var m = request.getMaterial();
 
-    if (request.getMaterial().getType() != null) {
-      material.setType(request.getMaterial().getType());
-    }
+      if (m.getTitle() != null) {
+        material.setTitle(m.getTitle());
+      }
 
-    if (request.getMaterial().getDuration() != null) {
-      material.setDuration(request.getMaterial().getDuration());
-    }
+      if (m.getRegion() != null) {
+        material.setRegion(m.getRegion().toLowerCase());
+      }
 
-    // ✅ Update Cloudinary fields ONLY if sent
-    if (request.getMaterial().getCloudinaryUrl() != null) {
-      material.setCloudinaryUrl(request.getMaterial().getCloudinaryUrl());
-      material.setCloudinaryPublicId(request.getMaterial().getCloudinaryPublicId());
-      material.setCloudinaryResourceType(request.getMaterial().getCloudinaryResourceType());
-      material.setCloudinaryFormat(request.getMaterial().getCloudinaryFormat());
-    }
+      if (m.getType() != null) {
+        material.setType(m.getType());
+      }
 
-    materialRepo.save(material);
+      if (m.getDuration() != null) {
+        material.setDuration(m.getDuration());
+      }
+
+      // Cloudinary update ONLY if URL is sent
+      if (m.getCloudinaryUrl() != null) {
+        material.setCloudinaryUrl(m.getCloudinaryUrl());
+        material.setCloudinaryPublicId(m.getCloudinaryPublicId());
+        material.setCloudinaryResourceType(m.getCloudinaryResourceType());
+        material.setCloudinaryFormat(m.getCloudinaryFormat());
+      }
+
+      materialRepo.save(material);
+    }
 
     /* =========================
     2️⃣ ASSIGNMENT MANAGEMENT
     ========================= */
 
-    List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : List.of();
+    // 🚨 If userIds not sent → do NOTHING
+    if (request.getUserIds() == null) {
+      return material;
+    }
 
+    List<String> newUserIds = request.getUserIds();
     List<TrainingAssignment> existingAssignments = assignmentRepo.findByTrainingId(trainingId);
 
     List<String> existingUserIds =
@@ -264,7 +272,7 @@ public class TrainingService {
 
     List<String> newlyAssignedUsers = new ArrayList<>();
 
-    // ➕ ADD new assignments
+    // ➕ ADD new users
     for (String userId : newUserIds) {
       if (existingUserIds.contains(userId)) continue;
 
@@ -284,9 +292,15 @@ public class TrainingService {
 
     // 🔁 UPDATE due date OR ❌ REMOVE unselected users
     for (TrainingAssignment assignment : existingAssignments) {
+
       if (newUserIds.contains(assignment.getUserId())) {
-        assignment.setDueDate(request.getDueDate());
-        assignmentRepo.save(assignment);
+
+        // Update due date ONLY if provided
+        if (request.getDueDate() != null) {
+          assignment.setDueDate(request.getDueDate());
+          assignmentRepo.save(assignment);
+        }
+
       } else {
         assignmentRepo.delete(assignment);
       }
