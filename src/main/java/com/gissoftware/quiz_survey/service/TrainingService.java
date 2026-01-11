@@ -1,8 +1,10 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.dto.TrainingEditDTO;
 import com.gissoftware.quiz_survey.dto.TrainingEngagementDTO;
 import com.gissoftware.quiz_survey.dto.TrainingUploadAssignDTO;
 import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
+import com.gissoftware.quiz_survey.mapper.TrainingMapper;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import com.gissoftware.quiz_survey.model.UserModel;
@@ -28,6 +30,7 @@ public class TrainingService {
   // ================= ADMIN =================
 
   public TrainingMaterial uploadAndAssign(TrainingUploadAssignDTO request) {
+
     TrainingMaterial material = request.getMaterial();
     material.setAssignedTo(0);
     material.setCompletionRate(0);
@@ -36,10 +39,14 @@ public class TrainingService {
 
     TrainingMaterial savedMaterial = materialRepo.save(material);
 
+    List<String> newlyAssignedUsers = new ArrayList<>();
+
     if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
       for (String userId : request.getUserIds()) {
+
         boolean alreadyAssigned =
             assignmentRepo.findByUserIdAndTrainingId(userId, savedMaterial.getId()).isPresent();
+
         if (alreadyAssigned) continue;
 
         TrainingAssignment assignment =
@@ -51,13 +58,18 @@ public class TrainingService {
                 .dueDate(request.getDueDate())
                 .assignedAt(Instant.now())
                 .build();
+
         assignmentRepo.save(assignment);
+        newlyAssignedUsers.add(userId);
       }
 
-      long totalAssigned = assignmentRepo.countByTrainingId(savedMaterial.getId());
-
-      savedMaterial.setAssignedTo((int) totalAssigned);
+      savedMaterial.setAssignedTo((int) assignmentRepo.countByTrainingId(savedMaterial.getId()));
       materialRepo.save(savedMaterial);
+    }
+
+    // 🔔 Notify ONLY newly assigned users
+    if (!newlyAssignedUsers.isEmpty()) {
+      fcmService.notifyTrainingAssigned(savedMaterial.getId(), newlyAssignedUsers);
     }
 
     return savedMaterial;
@@ -110,14 +122,19 @@ public class TrainingService {
   }
 
   public List<UserTrainingDTO> getUserTrainingDetails(String userId) {
+
     List<TrainingAssignment> assignments = assignmentRepo.findByUserId(userId);
+
     return assignments.stream()
         .map(
             assignment -> {
               TrainingMaterial material =
                   materialRepo
-                      .findById(assignment.getTrainingId())
-                      .orElseThrow(() -> new RuntimeException("Training not found"));
+                      .findByIdAndActiveTrue(assignment.getTrainingId())
+                      .orElse(null); // 👈 IMPORTANT
+
+              // 🚫 Skip deleted trainings
+              if (material == null) return null;
 
               return new UserTrainingDTO(
                   assignment.getId(),
@@ -132,6 +149,7 @@ public class TrainingService {
                   assignment.getStatus(),
                   assignment.getDueDate());
             })
+        .filter(Objects::nonNull) // 👈 removes deleted ones
         .toList();
   }
 
@@ -300,5 +318,17 @@ public class TrainingService {
     material.setDeletedAt(Instant.now());
 
     materialRepo.save(material);
+  }
+
+  public TrainingEditDTO getTrainingById(String trainingId) {
+
+    TrainingMaterial material =
+        materialRepo
+            .findByIdAndActiveTrue(trainingId)
+            .orElseThrow(() -> new RuntimeException("Training not found"));
+
+    List<TrainingAssignment> assignments = assignmentRepo.findByTrainingId(trainingId);
+
+    return TrainingMapper.toEditDTO(material, assignments);
   }
 }

@@ -1,0 +1,31 @@
+package com.gissoftware.quiz_survey.mapper;
+
+import com.gissoftware.quiz_survey.dto.TrainingEditDTO;
+import com.gissoftware.quiz_survey.model.TrainingAssignment;
+import com.gissoftware.quiz_survey.model.TrainingMaterial;
+import java.util.List;
+
+public class TrainingMapper {
+
+  private TrainingMapper() {}
+
+  public static TrainingEditDTO toEditDTO(
+      TrainingMaterial material, List<TrainingAssignment> assignments) {
+    return TrainingEditDTO.builder()
+        .id(material.getId())
+        .title(material.getTitle())
+        .type(material.getType())
+        .duration(material.getDuration())
+        .region(material.getRegion())
+        .assignedTo(material.getAssignedTo())
+        .completionRate(material.getCompletionRate())
+        .mediaUrl(material.getCloudinaryUrl())
+        .mediaPublicId(material.getCloudinaryPublicId())
+        .mediaResourceType(material.getCloudinaryResourceType())
+        .mediaFormat(material.getCloudinaryFormat())
+        .active(material.getActive())
+        .uploadDate(material.getUploadDate())
+        .assignedUserIds(assignments.stream().map(TrainingAssignment::getUserId).toList())
+        .build();
+  }
+}
