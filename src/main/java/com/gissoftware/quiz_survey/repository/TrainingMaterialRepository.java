@@ -9,14 +9,19 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface TrainingMaterialRepository extends MongoRepository<TrainingMaterial, String> {
 
+  // ✅ Active trainings
   List<TrainingMaterial> findAllByActiveTrue();
 
+  // ✅ Region filter
   List<TrainingMaterial> findByRegionAndActiveTrue(String region);
 
-  boolean existsByCloudinaryPublicIdAndActiveTrue(String cloudinaryPublicId);
+  // ✅ Provider-agnostic (Cloudinary / Bunny / S3 / Vimeo)
+  boolean existsByVideoPublicIdAndActiveTrue(String videoPublicId);
 
-  List<TrainingMaterial> findByCloudinaryResourceTypeAndDurationAndActiveTrue(
-      String cloudinaryResourceType, String duration);
+  // ✅ Filter by provider + duration
+  List<TrainingMaterial> findByVideoProviderAndDurationAndActiveTrue(
+      String videoProvider, String duration);
 
+  // ✅ Safe fetch (ignores deleted)
   Optional<TrainingMaterial> findByIdAndActiveTrue(String id);
 }

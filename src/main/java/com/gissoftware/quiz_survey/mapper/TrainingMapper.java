@@ -11,6 +11,7 @@ public class TrainingMapper {
 
   public static TrainingEditDTO toEditDTO(
       TrainingMaterial material, List<TrainingAssignment> assignments) {
+
     return TrainingEditDTO.builder()
         .id(material.getId())
         .title(material.getTitle())
@@ -19,10 +20,12 @@ public class TrainingMapper {
         .region(material.getRegion())
         .assignedTo(material.getAssignedTo())
         .completionRate(material.getCompletionRate())
-        .mediaUrl(material.getCloudinaryUrl())
-        .mediaPublicId(material.getCloudinaryPublicId())
-        .mediaResourceType(material.getCloudinaryResourceType())
-        .mediaFormat(material.getCloudinaryFormat())
+
+        // ✅ VIDEO (GENERIC)
+        .videoProvider(material.getVideoProvider())
+        .videoPublicId(material.getVideoPublicId())
+        .videoPlaybackUrl(material.getVideoPlaybackUrl())
+        .videoFormat(material.getVideoFormat())
         .active(material.getActive())
         .uploadDate(material.getUploadDate())
         .assignedUserIds(assignments.stream().map(TrainingAssignment::getUserId).toList())

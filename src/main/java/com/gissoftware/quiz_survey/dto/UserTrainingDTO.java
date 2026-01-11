@@ -9,18 +9,17 @@ import lombok.Data;
 public class UserTrainingDTO {
 
   private String assignmentId;
-
   private String trainingId;
   private String title;
   private String type;
   private String duration;
 
-  // Cloudinary
-  private String cloudinaryUrl;
-  private String cloudinaryFormat;
-  private String cloudinaryResourceType;
+  // ✅ VIDEO (GENERIC)
+  private String videoProvider;
+  private String videoPublicId;
+  private String videoPlaybackUrl;
+  private String videoFormat;
 
-  // User-specific
   private int progress;
   private String status;
   private Instant dueDate;

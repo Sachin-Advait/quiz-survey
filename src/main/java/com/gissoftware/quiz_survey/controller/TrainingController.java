@@ -7,7 +7,10 @@ import com.gissoftware.quiz_survey.service.TrainingService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +20,38 @@ import org.springframework.web.bind.annotation.*;
 public class TrainingController {
 
   private final TrainingService trainingService;
+
+  @Value("${bunny.api-key}")
+  private String bunnyApiKey;
+
+  @Value("${bunny.library-id}")
+  private String libraryId;
+
+  // ================= BUNNY SIGNED UPLOAD =================
+  @GetMapping("/bunny/upload-signature")
+  public ResponseEntity<Map<String, String>> getUploadSignature() {
+
+    String videoId = UUID.randomUUID().toString();
+    long expires = System.currentTimeMillis() / 1000 + 600; // 10 minutes
+
+    // Bunny SHA256 signature
+    String signatureRaw = libraryId + videoId + expires + bunnyApiKey;
+    String signature = DigestUtils.sha256Hex(signatureRaw);
+    System.out.println("BUNNY LIBRARY ID = " + libraryId);
+
+    return ResponseEntity.ok(
+        Map.of(
+            "videoId",
+            videoId,
+            "libraryId",
+            libraryId,
+            "expires",
+            String.valueOf(expires),
+            "signature",
+            signature,
+            "uploadUrl",
+            "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId));
+  }
 
   // ================= ADMIN =================
   @PostMapping

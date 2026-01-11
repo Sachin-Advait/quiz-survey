@@ -8,7 +8,14 @@ import lombok.Data;
 @Data
 public class TrainingUploadAssignDTO {
 
-  private TrainingMaterial material; // training details
-  private List<String> userIds; // learners
-  private Instant dueDate; // assignment due date
+  private TrainingMaterial material;
+
+  private List<String> userIds;
+  private Instant dueDate;
+
+  // VIDEO (generic)
+  private String videoProvider; // bunny | cloudinary | s3
+  private String videoPublicId; // videoId / objectKey
+  private String videoPlaybackUrl; // optional
+  private String videoFormat; // hls | mp4
 }

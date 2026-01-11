@@ -31,11 +31,19 @@ public class TrainingService {
 
   public TrainingMaterial uploadAndAssign(TrainingUploadAssignDTO request) {
 
-    TrainingMaterial material = request.getMaterial();
+    TrainingMaterial material =
+        request.getMaterial() != null ? request.getMaterial() : new TrainingMaterial();
+
     material.setAssignedTo(0);
     material.setCompletionRate(0);
     material.setViews(0);
     material.setUploadDate(Instant.now());
+
+    // ✅ SET VIDEO FIELDS (GENERIC)
+    material.setVideoProvider(request.getVideoProvider());
+    material.setVideoPublicId(request.getVideoPublicId());
+    material.setVideoPlaybackUrl(request.getVideoPlaybackUrl());
+    material.setVideoFormat(request.getVideoFormat());
 
     TrainingMaterial savedMaterial = materialRepo.save(material);
 
@@ -67,7 +75,6 @@ public class TrainingService {
       materialRepo.save(savedMaterial);
     }
 
-    // 🔔 Notify ONLY newly assigned users
     if (!newlyAssignedUsers.isEmpty()) {
       fcmService.notifyTrainingAssigned(savedMaterial.getId(), newlyAssignedUsers);
     }
@@ -87,9 +94,11 @@ public class TrainingService {
   }
 
   public void assignTraining(String trainingId, List<String> userIds, Instant dueDate) {
+
     for (String userId : userIds) {
       boolean alreadyAssigned =
           assignmentRepo.findByUserIdAndTrainingId(userId, trainingId).isPresent();
+
       if (alreadyAssigned) continue;
 
       TrainingAssignment assignment =
@@ -105,35 +114,31 @@ public class TrainingService {
       assignmentRepo.save(assignment);
     }
 
-    long totalAssigned = assignmentRepo.countByTrainingId(trainingId);
     materialRepo
         .findById(trainingId)
         .ifPresent(
             material -> {
-              material.setAssignedTo((int) totalAssigned);
+              material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
               materialRepo.save(material);
             });
+
     fcmService.notifyTrainingAssigned(trainingId, userIds);
   }
 
   // ================= USER =================
+
   public List<TrainingAssignment> getUserTrainings(String userId) {
     return assignmentRepo.findByUserId(userId);
   }
 
   public List<UserTrainingDTO> getUserTrainingDetails(String userId) {
 
-    List<TrainingAssignment> assignments = assignmentRepo.findByUserId(userId);
-
-    return assignments.stream()
+    return assignmentRepo.findByUserId(userId).stream()
         .map(
             assignment -> {
               TrainingMaterial material =
-                  materialRepo
-                      .findByIdAndActiveTrue(assignment.getTrainingId())
-                      .orElse(null); // 👈 IMPORTANT
+                  materialRepo.findByIdAndActiveTrue(assignment.getTrainingId()).orElse(null);
 
-              // 🚫 Skip deleted trainings
               if (material == null) return null;
 
               return new UserTrainingDTO(
@@ -142,32 +147,37 @@ public class TrainingService {
                   material.getTitle(),
                   material.getType(),
                   material.getDuration(),
-                  material.getCloudinaryUrl(),
-                  material.getCloudinaryFormat(),
-                  material.getCloudinaryResourceType(),
+
+                  // ✅ VIDEO (GENERIC)
+                  material.getVideoProvider(),
+                  material.getVideoPublicId(),
+                  material.getVideoPlaybackUrl(),
+                  material.getVideoFormat(),
                   assignment.getProgress(),
                   assignment.getStatus(),
                   assignment.getDueDate());
             })
-        .filter(Objects::nonNull) // 👈 removes deleted ones
+        .filter(Objects::nonNull)
         .toList();
   }
 
   public TrainingAssignment updateProgress(String userId, String trainingId, int progress) {
+
     TrainingAssignment assignment =
         assignmentRepo
             .findByUserIdAndTrainingId(userId, trainingId)
             .orElseThrow(() -> new RuntimeException("Training not assigned"));
 
-    int current = assignment.getProgress();
-
-    if (progress > current) assignment.setProgress(progress);
+    if (progress > assignment.getProgress()) {
+      assignment.setProgress(progress);
+    }
 
     if (assignment.getProgress() >= 100) {
       assignment.setStatus("completed");
     } else if (progress > 0) {
       assignment.setStatus("in-progress");
     }
+
     if (assignment.getProgress() >= 100) {
       long totalAssigned = assignmentRepo.countByTrainingId(trainingId);
       long completed = assignmentRepo.countByTrainingIdAndStatus(trainingId, "completed");
@@ -186,15 +196,14 @@ public class TrainingService {
   }
 
   public List<TrainingEngagementDTO> getEngagement(String trainingId) {
-    List<TrainingAssignment> assignments;
-    if (trainingId != null) assignments = assignmentRepo.findByTrainingId(trainingId);
-    else assignments = assignmentRepo.findAll();
+
+    List<TrainingAssignment> assignments =
+        trainingId != null ? assignmentRepo.findByTrainingId(trainingId) : assignmentRepo.findAll();
 
     return assignments.stream()
         .map(
             a -> {
               UserModel user = userRepo.findById(a.getUserId()).orElse(null);
-
               TrainingMaterial material =
                   materialRepo.findByIdAndActiveTrue(a.getTrainingId()).orElse(null);
 
@@ -213,6 +222,8 @@ public class TrainingService {
         .toList();
   }
 
+  // ================= UPDATE =================
+
   public TrainingMaterial updateTraining(String trainingId, TrainingUploadAssignDTO request) {
 
     TrainingMaterial material =
@@ -220,40 +231,30 @@ public class TrainingService {
             .findById(trainingId)
             .orElseThrow(() -> new RuntimeException("Training not found"));
 
-    /* =========================
-    1️⃣ UPDATE TRAINING META
-    ========================= */
+    if (request.getMaterial() != null) {
+      if (request.getMaterial().getTitle() != null)
+        material.setTitle(request.getMaterial().getTitle());
 
-    // ✅ Update basic fields (flat payload support)
-    if (request.getMaterial().getTitle() != null) {
-      material.setTitle(request.getMaterial().getTitle());
+      if (request.getMaterial().getRegion() != null)
+        material.setRegion(request.getMaterial().getRegion().toLowerCase());
+
+      if (request.getMaterial().getType() != null)
+        material.setType(request.getMaterial().getType());
+
+      if (request.getMaterial().getDuration() != null)
+        material.setDuration(request.getMaterial().getDuration());
     }
 
-    if (request.getMaterial().getRegion() != null) {
-      material.setRegion(request.getMaterial().getRegion().toLowerCase());
-    }
+    if (request.getVideoProvider() != null) material.setVideoProvider(request.getVideoProvider());
 
-    if (request.getMaterial().getType() != null) {
-      material.setType(request.getMaterial().getType());
-    }
+    if (request.getVideoPublicId() != null) material.setVideoPublicId(request.getVideoPublicId());
 
-    if (request.getMaterial().getDuration() != null) {
-      material.setDuration(request.getMaterial().getDuration());
-    }
+    if (request.getVideoPlaybackUrl() != null)
+      material.setVideoPlaybackUrl(request.getVideoPlaybackUrl());
 
-    // ✅ Update Cloudinary fields ONLY if sent
-    if (request.getMaterial().getCloudinaryUrl() != null) {
-      material.setCloudinaryUrl(request.getMaterial().getCloudinaryUrl());
-      material.setCloudinaryPublicId(request.getMaterial().getCloudinaryPublicId());
-      material.setCloudinaryResourceType(request.getMaterial().getCloudinaryResourceType());
-      material.setCloudinaryFormat(request.getMaterial().getCloudinaryFormat());
-    }
+    if (request.getVideoFormat() != null) material.setVideoFormat(request.getVideoFormat());
 
     materialRepo.save(material);
-
-    /* =========================
-    2️⃣ ASSIGNMENT MANAGEMENT
-    ========================= */
 
     List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : List.of();
 
@@ -264,11 +265,10 @@ public class TrainingService {
 
     List<String> newlyAssignedUsers = new ArrayList<>();
 
-    // ➕ ADD new assignments
     for (String userId : newUserIds) {
       if (existingUserIds.contains(userId)) continue;
 
-      TrainingAssignment assignment =
+      assignmentRepo.save(
           TrainingAssignment.builder()
               .trainingId(trainingId)
               .userId(userId)
@@ -276,13 +276,11 @@ public class TrainingService {
               .status("not-started")
               .dueDate(request.getDueDate())
               .assignedAt(Instant.now())
-              .build();
+              .build());
 
-      assignmentRepo.save(assignment);
       newlyAssignedUsers.add(userId);
     }
 
-    // 🔁 UPDATE due date OR ❌ REMOVE unselected users
     for (TrainingAssignment assignment : existingAssignments) {
       if (newUserIds.contains(assignment.getUserId())) {
         assignment.setDueDate(request.getDueDate());
@@ -291,10 +289,6 @@ public class TrainingService {
         assignmentRepo.delete(assignment);
       }
     }
-
-    /* =========================
-    3️⃣ UPDATE COUNTS & NOTIFY
-    ========================= */
 
     material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
     materialRepo.save(material);
@@ -313,10 +307,8 @@ public class TrainingService {
             .findById(trainingId)
             .orElseThrow(() -> new RuntimeException("Training not found"));
 
-    // 🔒 SOFT DELETE
     material.setActive(false);
     material.setDeletedAt(Instant.now());
-
     materialRepo.save(material);
   }
 
@@ -327,8 +319,6 @@ public class TrainingService {
             .findByIdAndActiveTrue(trainingId)
             .orElseThrow(() -> new RuntimeException("Training not found"));
 
-    List<TrainingAssignment> assignments = assignmentRepo.findByTrainingId(trainingId);
-
-    return TrainingMapper.toEditDTO(material, assignments);
+    return TrainingMapper.toEditDTO(material, assignmentRepo.findByTrainingId(trainingId));
   }
 }

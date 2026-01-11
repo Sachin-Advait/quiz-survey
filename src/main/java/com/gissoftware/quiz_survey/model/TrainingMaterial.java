@@ -29,11 +29,18 @@ public class TrainingMaterial {
   private Integer completionRate;
   private Integer views;
 
-  // ===== Cloudinary fields =====
-  private String cloudinaryPublicId;
-  private String cloudinaryUrl;
-  private String cloudinaryResourceType;
-  private String cloudinaryFormat;
+  /* =========================
+  VIDEO (ANY PROVIDER)
+  ========================= */
+  private String videoProvider; // cloudinary | bunny | s3 | vimeo
+  private String videoPublicId; // provider video id
+  private String videoPlaybackUrl; // signed / iframe url (optional)
+  private String videoFormat; // mp4, hls, dash (optional)
+
+  /* =========================
+  DOCUMENTS (ANY CDN)
+  ========================= */
+  private String documentUrl;
 
   private Boolean active = true;
   private Instant deletedAt;
