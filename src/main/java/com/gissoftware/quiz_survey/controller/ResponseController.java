@@ -3,11 +3,10 @@ package com.gissoftware.quiz_survey.controller;
 import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.service.ResponseService;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @AllArgsConstructor
 @RequestMapping("/api")
@@ -50,7 +49,7 @@ public class ResponseController {
         );
     }
 
-    // ✅ New Endpoint: Low Scorers During Last 5 Weeks
+
     @GetMapping("/user/responses/low-scorers")
     public ResponseEntity<ApiResponseDTO<List<LowScoringUserDTO>>> lowScorersLast5Weeks() {
         return ResponseEntity.ok(
