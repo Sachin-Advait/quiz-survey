@@ -42,20 +42,21 @@ public class FCMService {
   /* ================= TRAINING ================= */
   @Async
   public void notifyTrainingAssigned(String trainingId, String title, List<String> userIds) {
-    for (String userId : userIds) {
-      userRepository
-          .findById(userId)
-          .ifPresent(
-              user -> {
-                if (isTokenInvalid(user)) return;
-                sendNotification(
-                    user.getFcmToken(),
-                    title + " Training Assigned",
-                    "A new training has been assigned to you. Please complete it before the due date.",
-                    "TRAINING",
-                    trainingId);
-              });
-    }
+
+    List<UserModel> users = userRepository.findAllById(userIds);
+
+    users.parallelStream()
+        .forEach(
+            user -> {
+              if (isTokenInvalid(user)) return;
+
+              sendNotification(
+                  user.getFcmToken(),
+                  title + " Training Assigned",
+                  "Please complete before due date",
+                  "TRAINING",
+                  trainingId);
+            });
   }
 
   /* ================= QUIZ / SURVEY ================= */

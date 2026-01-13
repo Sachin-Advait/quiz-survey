@@ -15,7 +15,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -28,6 +31,11 @@ public class TrainingService {
   private final FCMService fcmService;
 
   // ================= ADMIN =================
+
+  @Async
+  public void uploadAndAssignAsync(TrainingUploadAssignDTO request) {
+    uploadAndAssign(request);
+  }
 
   public TrainingMaterial uploadAndAssign(TrainingUploadAssignDTO request) {
 
@@ -72,17 +80,24 @@ public class TrainingService {
     TrainingMaterial savedMaterial = materialRepo.save(material);
 
     // ================= ASSIGN USERS =================
-    List<String> newlyAssignedUsers = new ArrayList<>();
 
     if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
-      for (String userId : request.getUserIds()) {
+      List<String> userIds = request.getUserIds();
+      if (userIds == null || userIds.isEmpty()) return savedMaterial;
 
-        boolean alreadyAssigned =
-            assignmentRepo.findByUserIdAndTrainingId(userId, savedMaterial.getId()).isPresent();
+      // 🔥 fetch once
+      List<TrainingAssignment> existing = assignmentRepo.findByTrainingId(savedMaterial.getId());
 
-        if (alreadyAssigned) continue;
+      Set<String> existingUserIds =
+          existing.stream().map(TrainingAssignment::getUserId).collect(Collectors.toSet());
 
-        assignmentRepo.save(
+      // 🔥 bulk insert
+      List<TrainingAssignment> batch = new ArrayList<>();
+
+      for (String userId : userIds) {
+        if (existingUserIds.contains(userId)) continue;
+
+        batch.add(
             TrainingAssignment.builder()
                 .userId(userId)
                 .trainingId(savedMaterial.getId())
@@ -91,17 +106,21 @@ public class TrainingService {
                 .dueDate(request.getDueDate())
                 .assignedAt(Instant.now())
                 .build());
-
-        newlyAssignedUsers.add(userId);
       }
 
+      if (!batch.isEmpty()) {
+        assignmentRepo.saveAll(batch);
+      }
+
+      // 🔥 single count update
       savedMaterial.setAssignedTo((int) assignmentRepo.countByTrainingId(savedMaterial.getId()));
       materialRepo.save(savedMaterial);
-    }
 
-    if (!newlyAssignedUsers.isEmpty()) {
+      // 🔥 async notification
       fcmService.notifyTrainingAssigned(
-          savedMaterial.getId(), savedMaterial.getTitle(), newlyAssignedUsers);
+          savedMaterial.getId(),
+          savedMaterial.getTitle(),
+          batch.stream().map(TrainingAssignment::getUserId).toList());
     }
 
     return savedMaterial;
@@ -119,14 +138,16 @@ public class TrainingService {
   }
 
   public void assignTraining(String trainingId, List<String> userIds, Instant dueDate) {
-    List<String> newlyAssignedUsers = new ArrayList<>();
+    List<TrainingAssignment> existing = assignmentRepo.findByTrainingId(trainingId);
+    Set<String> existingUserIds =
+        existing.stream().map(TrainingAssignment::getUserId).collect(Collectors.toSet());
+
+    List<TrainingAssignment> batch = new ArrayList<>();
+
     for (String userId : userIds) {
-      boolean alreadyAssigned =
-          assignmentRepo.findByUserIdAndTrainingId(userId, trainingId).isPresent();
+      if (existingUserIds.contains(userId)) continue;
 
-      if (alreadyAssigned) continue;
-
-      TrainingAssignment assignment =
+      batch.add(
           TrainingAssignment.builder()
               .userId(userId)
               .trainingId(trainingId)
@@ -134,10 +155,11 @@ public class TrainingService {
               .status("not-started")
               .dueDate(dueDate)
               .assignedAt(Instant.now())
-              .build();
+              .build());
+    }
 
-      assignmentRepo.save(assignment);
-      newlyAssignedUsers.add(userId);
+    if (!batch.isEmpty()) {
+      assignmentRepo.saveAll(batch);
     }
 
     materialRepo
@@ -147,10 +169,10 @@ public class TrainingService {
               material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
               materialRepo.save(material);
 
-              if (!newlyAssignedUsers.isEmpty()) {
-                fcmService.notifyTrainingAssigned(
-                    trainingId, material.getTitle(), newlyAssignedUsers);
-              }
+              fcmService.notifyTrainingAssigned(
+                  trainingId,
+                  material.getTitle(),
+                  batch.stream().map(TrainingAssignment::getUserId).toList());
             });
   }
 
@@ -308,17 +330,21 @@ public class TrainingService {
     materialRepo.save(material);
 
     /* ---------- ASSIGNMENT UPDATE ---------- */
-    List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : List.of();
-    List<TrainingAssignment> existingAssignments = assignmentRepo.findByTrainingId(trainingId);
-    List<String> existingUserIds =
-        existingAssignments.stream().map(TrainingAssignment::getUserId).toList();
 
-    List<String> newlyAssignedUsers = new ArrayList<>();
+    List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : List.of();
+
+    List<TrainingAssignment> existingAssignments = assignmentRepo.findByTrainingId(trainingId);
+
+    Set<String> existingUserIds =
+        existingAssignments.stream().map(TrainingAssignment::getUserId).collect(Collectors.toSet());
+
+    /* ---------- ADD NEW ASSIGNMENTS (BULK) ---------- */
+    List<TrainingAssignment> batch = new ArrayList<>();
 
     for (String userId : newUserIds) {
       if (existingUserIds.contains(userId)) continue;
 
-      assignmentRepo.save(
+      batch.add(
           TrainingAssignment.builder()
               .trainingId(trainingId)
               .userId(userId)
@@ -327,24 +353,33 @@ public class TrainingService {
               .dueDate(request.getDueDate())
               .assignedAt(Instant.now())
               .build());
-
-      newlyAssignedUsers.add(userId);
     }
 
+    if (!batch.isEmpty()) {
+      assignmentRepo.saveAll(batch);
+    }
+
+    /* ---------- REMOVE UNASSIGNED USERS ---------- */
     for (TrainingAssignment assignment : existingAssignments) {
-      if (newUserIds.contains(assignment.getUserId())) {
+      if (!newUserIds.contains(assignment.getUserId())) {
+        assignmentRepo.delete(assignment);
+      } else {
+        // update due date for still-assigned users
         assignment.setDueDate(request.getDueDate());
         assignmentRepo.save(assignment);
-      } else {
-        assignmentRepo.delete(assignment);
       }
     }
 
+    /* ---------- UPDATE COUNT ---------- */
     material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
     materialRepo.save(material);
 
-    if (!newlyAssignedUsers.isEmpty()) {
-      fcmService.notifyTrainingAssigned(trainingId, material.getTitle(), newlyAssignedUsers);
+    /* ---------- NOTIFY ONLY NEW USERS ---------- */
+    if (!batch.isEmpty()) {
+      fcmService.notifyTrainingAssigned(
+          trainingId,
+          material.getTitle(),
+          batch.stream().map(TrainingAssignment::getUserId).toList());
     }
 
     return material;

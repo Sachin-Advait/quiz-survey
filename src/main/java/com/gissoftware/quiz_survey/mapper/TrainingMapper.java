@@ -20,6 +20,7 @@ public class TrainingMapper {
         .region(material.getRegion())
         .assignedTo(material.getAssignedTo())
         .completionRate(material.getCompletionRate())
+        .dueDate(material.getDueDate())
 
         // ✅ VIDEO (GENERIC)
         .videoProvider(material.getVideoProvider())

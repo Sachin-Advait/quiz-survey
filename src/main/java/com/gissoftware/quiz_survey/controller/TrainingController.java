@@ -157,14 +157,24 @@ public class TrainingController {
   }
 
   // ================= ADMIN =================
+  //  @PostMapping
+  //  public ResponseEntity<ApiResponseDTO<TrainingMaterial>> uploadTraining(
+  //      @RequestBody TrainingUploadAssignDTO request) {
+  //
+  //    TrainingMaterial savedMaterial = trainingService.uploadAndAssign(request);
+  //
+  //    return ResponseEntity.ok(
+  //        new ApiResponseDTO<>(true, "Training uploaded and assigned successfully",
+  // savedMaterial));
+  //  }
   @PostMapping
-  public ResponseEntity<ApiResponseDTO<TrainingMaterial>> uploadTraining(
+  public ResponseEntity<ApiResponseDTO<Void>> uploadTraining(
       @RequestBody TrainingUploadAssignDTO request) {
 
-    TrainingMaterial savedMaterial = trainingService.uploadAndAssign(request);
+    trainingService.uploadAndAssignAsync(request);
 
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Training uploaded and assigned successfully", savedMaterial));
+    return ResponseEntity.accepted()
+        .body(new ApiResponseDTO<>(true, "Training uploaded and assignment started", null));
   }
 
   @GetMapping
