@@ -19,6 +19,7 @@ public class UserTrainingDTO {
   private String videoPublicId;
   private String videoPlaybackUrl;
   private String videoFormat;
+  private String documentUrl;
 
   private int progress;
   private String status;

@@ -28,6 +28,7 @@ public class TrainingMaterial {
   private Integer assignedTo;
   private Integer completionRate;
   private Integer views;
+  private Instant dueDate;
 
   /* =========================
   VIDEO (ANY PROVIDER)

@@ -7,12 +7,16 @@ import com.gissoftware.quiz_survey.service.TrainingService;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user/training")
@@ -21,23 +25,90 @@ public class TrainingController {
 
   private final TrainingService trainingService;
 
-  @Value("${bunny.api-key}")
-  private String bunnyApiKey;
+  @Value("${bunny.storage.api-key}")
+  private String bunnyStorageApiKey;
+
+  @Value("${bunny.storage.cdn-url}")
+  private String bunnyStorageCdnUrl;
 
   @Value("${bunny.library-id}")
   private String libraryId;
 
-  // ================= BUNNY SIGNED UPLOAD =================
+  @Value("${bunny.storage.zone}")
+  private String bunnyStorageZone;
+
+  @Value("${bunny.api-key}")
+  private String bunnyApiKey;
+
+  @GetMapping("/bunny/tus-signature")
+  public ResponseEntity<Map<String, String>> getTusSignature(@RequestParam String videoId) {
+    long expires = Instant.now().getEpochSecond() + 15 * 60; // 15 min
+
+    String raw = libraryId + bunnyApiKey + expires + videoId;
+    String signature = DigestUtils.sha256Hex(raw);
+
+    return ResponseEntity.ok(
+        Map.of(
+            "signature", signature,
+            "expires", String.valueOf(expires),
+            "libraryId", libraryId,
+            "videoId", videoId));
+  }
+
+  @PostMapping("/bunny/upload-document")
+  public ResponseEntity<Map<String, String>> uploadDocument(
+      @RequestParam("file") MultipartFile file) throws Exception {
+
+    // 1️⃣ Validate file type
+    List<String> allowed =
+        List.of(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+
+    if (!allowed.contains(file.getContentType())) {
+      throw new IllegalArgumentException("Unsupported document type");
+    }
+
+    // 3️⃣ Generate filename
+    String fileName =
+        System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("\\s+", "_");
+
+    String uploadUrl = "https://sg.storage.bunnycdn.com/" + bunnyStorageZone + "/" + fileName;
+
+    // 4️⃣ Upload to Bunny Storage
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyStorageApiKey);
+    headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+    HttpEntity<byte[]> entity = new HttpEntity<>(file.getBytes(), headers);
+
+    RestTemplate restTemplate = new RestTemplate();
+    restTemplate.put(uploadUrl, entity);
+
+    // 5️⃣ Public CDN URL
+    return ResponseEntity.ok(
+        Map.of(
+            "documentUrl",
+            bunnyStorageCdnUrl + "/" + fileName,
+            "fileName",
+            file.getOriginalFilename(),
+            "type",
+            "document"));
+  }
+
   @GetMapping("/bunny/upload-signature")
-  public ResponseEntity<Map<String, String>> getUploadSignature() {
+  public ResponseEntity<Map<String, String>> getUploadSignature(
+      @RequestParam String videoId, @RequestParam long fileSize) {
 
-    String videoId = UUID.randomUUID().toString();
-    long expires = System.currentTimeMillis() / 1000 + 600; // 10 minutes
+    long expires = Instant.now().getEpochSecond() + 600;
 
-    // Bunny SHA256 signature
-    String signatureRaw = libraryId + videoId + expires + bunnyApiKey;
-    String signature = DigestUtils.sha256Hex(signatureRaw);
-    System.out.println("BUNNY LIBRARY ID = " + libraryId);
+    String raw = libraryId + videoId + expires + fileSize + bunnyApiKey;
+    String signature = DigestUtils.sha256Hex(raw);
 
     return ResponseEntity.ok(
         Map.of(
@@ -51,6 +122,38 @@ public class TrainingController {
             signature,
             "uploadUrl",
             "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId));
+  }
+
+  @PostMapping("/bunny/create-video")
+  public ResponseEntity<Map<String, String>> createVideo(@RequestParam String title) {
+
+    RestTemplate rest = new RestTemplate();
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyApiKey);
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    HttpEntity<Map<String, String>> req = new HttpEntity<>(Map.of("title", title), headers);
+
+    String url = "https://video.bunnycdn.com/library/" + libraryId + "/videos";
+    ResponseEntity<Map> res = rest.postForEntity(url, req, Map.class);
+
+    String videoId = (String) res.getBody().get("guid");
+
+    return ResponseEntity.ok(
+        Map.of(
+            "videoId",
+            videoId,
+            "uploadUrl",
+            "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId));
+  }
+
+  @GetMapping("/bunny/upload-token")
+  public ResponseEntity<Map<String, String>> getUploadToken() {
+    return ResponseEntity.ok(
+        Map.of(
+            "accessKey", bunnyApiKey // you can rotate later if needed
+            ));
   }
 
   // ================= ADMIN =================

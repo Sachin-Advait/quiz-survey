@@ -15,7 +15,10 @@ public class TrainingUploadAssignDTO {
 
   // VIDEO (generic)
   private String videoProvider; // bunny | cloudinary | s3
-  private String videoPublicId; // videoId / objectKey
-  private String videoPlaybackUrl; // optional
-  private String videoFormat; // hls | mp4
+  private String videoPublicId;
+  private String videoPlaybackUrl;
+  private String videoFormat;
+
+  // ✅ DOCUMENT
+  private String documentUrl;
 }

@@ -38,15 +38,40 @@ public class TrainingService {
     material.setCompletionRate(0);
     material.setViews(0);
     material.setUploadDate(Instant.now());
+    material.setActive(true);
+    material.setDueDate(request.getDueDate());
 
-    // ✅ SET VIDEO FIELDS (GENERIC)
-    material.setVideoProvider(request.getVideoProvider());
-    material.setVideoPublicId(request.getVideoPublicId());
-    material.setVideoPlaybackUrl(request.getVideoPlaybackUrl());
-    material.setVideoFormat(request.getVideoFormat());
+    String type = material.getType(); // video | document
+
+    // ================= VIDEO =================
+    if ("video".equalsIgnoreCase(type)) {
+
+      material.setVideoProvider("bunny");
+      material.setVideoPublicId(request.getVideoPublicId());
+      material.setVideoPlaybackUrl(request.getVideoPlaybackUrl());
+      material.setVideoFormat(request.getVideoFormat());
+
+      // 🔥 clear document fields
+      material.setDocumentUrl(null);
+      material.setDuration(material.getDuration());
+
+    }
+    // ================= DOCUMENT =================
+    else if ("document".equalsIgnoreCase(type)) {
+
+      material.setDocumentUrl(request.getDocumentUrl());
+
+      // 🔥 clear video fields
+      material.setVideoProvider(null);
+      material.setVideoPublicId(null);
+      material.setVideoPlaybackUrl(null);
+      material.setVideoFormat(null);
+      material.setDuration(null);
+    }
 
     TrainingMaterial savedMaterial = materialRepo.save(material);
 
+    // ================= ASSIGN USERS =================
     List<String> newlyAssignedUsers = new ArrayList<>();
 
     if (request.getUserIds() != null && !request.getUserIds().isEmpty()) {
@@ -57,7 +82,7 @@ public class TrainingService {
 
         if (alreadyAssigned) continue;
 
-        TrainingAssignment assignment =
+        assignmentRepo.save(
             TrainingAssignment.builder()
                 .userId(userId)
                 .trainingId(savedMaterial.getId())
@@ -65,9 +90,8 @@ public class TrainingService {
                 .status("not-started")
                 .dueDate(request.getDueDate())
                 .assignedAt(Instant.now())
-                .build();
+                .build());
 
-        assignmentRepo.save(assignment);
         newlyAssignedUsers.add(userId);
       }
 
@@ -76,7 +100,8 @@ public class TrainingService {
     }
 
     if (!newlyAssignedUsers.isEmpty()) {
-      fcmService.notifyTrainingAssigned(savedMaterial.getId(), newlyAssignedUsers);
+      fcmService.notifyTrainingAssigned(
+          savedMaterial.getId(), savedMaterial.getTitle(), newlyAssignedUsers);
     }
 
     return savedMaterial;
@@ -94,7 +119,7 @@ public class TrainingService {
   }
 
   public void assignTraining(String trainingId, List<String> userIds, Instant dueDate) {
-
+    List<String> newlyAssignedUsers = new ArrayList<>();
     for (String userId : userIds) {
       boolean alreadyAssigned =
           assignmentRepo.findByUserIdAndTrainingId(userId, trainingId).isPresent();
@@ -112,6 +137,7 @@ public class TrainingService {
               .build();
 
       assignmentRepo.save(assignment);
+      newlyAssignedUsers.add(userId);
     }
 
     materialRepo
@@ -120,9 +146,12 @@ public class TrainingService {
             material -> {
               material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
               materialRepo.save(material);
-            });
 
-    fcmService.notifyTrainingAssigned(trainingId, userIds);
+              if (!newlyAssignedUsers.isEmpty()) {
+                fcmService.notifyTrainingAssigned(
+                    trainingId, material.getTitle(), newlyAssignedUsers);
+              }
+            });
   }
 
   // ================= USER =================
@@ -153,6 +182,7 @@ public class TrainingService {
                   material.getVideoPublicId(),
                   material.getVideoPlaybackUrl(),
                   material.getVideoFormat(),
+                  material.getDocumentUrl(),
                   assignment.getProgress(),
                   assignment.getStatus(),
                   assignment.getDueDate());
@@ -231,6 +261,7 @@ public class TrainingService {
             .findById(trainingId)
             .orElseThrow(() -> new RuntimeException("Training not found"));
 
+    /* ---------- BASIC FIELDS ---------- */
     if (request.getMaterial() != null) {
       if (request.getMaterial().getTitle() != null)
         material.setTitle(request.getMaterial().getTitle());
@@ -245,21 +276,40 @@ public class TrainingService {
         material.setDuration(request.getMaterial().getDuration());
     }
 
-    if (request.getVideoProvider() != null) material.setVideoProvider(request.getVideoProvider());
+    String type = material.getType();
 
-    if (request.getVideoPublicId() != null) material.setVideoPublicId(request.getVideoPublicId());
+    /* ---------- VIDEO ---------- */
+    if ("video".equalsIgnoreCase(type)) {
 
-    if (request.getVideoPlaybackUrl() != null)
-      material.setVideoPlaybackUrl(request.getVideoPlaybackUrl());
+      material.setVideoProvider("bunny");
 
-    if (request.getVideoFormat() != null) material.setVideoFormat(request.getVideoFormat());
+      if (request.getVideoPublicId() != null) material.setVideoPublicId(request.getVideoPublicId());
+
+      if (request.getVideoPlaybackUrl() != null)
+        material.setVideoPlaybackUrl(request.getVideoPlaybackUrl());
+
+      if (request.getVideoFormat() != null) material.setVideoFormat(request.getVideoFormat());
+
+      material.setDocumentUrl(null);
+    }
+
+    /* ---------- DOCUMENT ---------- */
+    else if ("document".equalsIgnoreCase(type)) {
+
+      if (request.getDocumentUrl() != null) material.setDocumentUrl(request.getDocumentUrl());
+
+      material.setVideoProvider(null);
+      material.setVideoPublicId(null);
+      material.setVideoPlaybackUrl(null);
+      material.setVideoFormat(null);
+      material.setDuration(null);
+    }
 
     materialRepo.save(material);
 
+    /* ---------- ASSIGNMENT UPDATE ---------- */
     List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : List.of();
-
     List<TrainingAssignment> existingAssignments = assignmentRepo.findByTrainingId(trainingId);
-
     List<String> existingUserIds =
         existingAssignments.stream().map(TrainingAssignment::getUserId).toList();
 
@@ -294,7 +344,7 @@ public class TrainingService {
     materialRepo.save(material);
 
     if (!newlyAssignedUsers.isEmpty()) {
-      fcmService.notifyTrainingAssigned(trainingId, newlyAssignedUsers);
+      fcmService.notifyTrainingAssigned(trainingId, material.getTitle(), newlyAssignedUsers);
     }
 
     return material;
