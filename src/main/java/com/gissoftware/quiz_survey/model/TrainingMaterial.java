@@ -16,35 +16,36 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 public class TrainingMaterial {
 
-  @Id private String id;
+    @Id
+    private String id;
 
-  private String title;
+    private String title;
+    private String type;
+    private String duration;
 
-  private String type; // video, document, interactive
-  private String duration;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String region;
 
-  private String region;
+    private Integer assignedTo;
+    private Integer completionRate;
+    private Integer views;
+    private Instant dueDate;
 
-  private Integer assignedTo;
-  private Integer completionRate;
-  private Integer views;
-  private Instant dueDate;
+    private String videoProvider;
 
-  /* =========================
-  VIDEO (ANY PROVIDER)
-  ========================= */
-  private String videoProvider; // cloudinary | bunny | s3 | vimeo
-  private String videoPublicId; // provider video id
-  private String videoPlaybackUrl; // signed / iframe url (optional)
-  private String videoFormat; // mp4, hls, dash (optional)
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String videoPublicId;
 
-  /* =========================
-  DOCUMENTS (ANY CDN)
-  ========================= */
-  private String documentUrl;
+    private String videoPlaybackUrl;
+    private String videoFormat;
 
-  private Boolean active = true;
-  private Instant deletedAt;
+    private String documentUrl;
 
-  @CreatedDate private Instant uploadDate;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private Boolean active = true;
+
+    private Instant deletedAt;
+
+    @CreatedDate
+    private Instant uploadDate;
 }

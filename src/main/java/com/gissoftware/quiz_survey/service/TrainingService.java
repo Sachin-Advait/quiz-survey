@@ -7,7 +7,6 @@ import com.gissoftware.quiz_survey.dto.UserTrainingDTO;
 import com.gissoftware.quiz_survey.mapper.TrainingMapper;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
-import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.TrainingAssignmentRepository;
 import com.gissoftware.quiz_survey.repository.TrainingMaterialRepository;
 import com.gissoftware.quiz_survey.repository.UserRepository;
@@ -248,30 +247,7 @@ public class TrainingService {
   }
 
   public List<TrainingEngagementDTO> getEngagement(String trainingId) {
-
-    List<TrainingAssignment> assignments =
-        trainingId != null ? assignmentRepo.findByTrainingId(trainingId) : assignmentRepo.findAll();
-
-    return assignments.stream()
-        .map(
-            a -> {
-              UserModel user = userRepo.findById(a.getUserId()).orElse(null);
-              TrainingMaterial material =
-                  materialRepo.findByIdAndActiveTrue(a.getTrainingId()).orElse(null);
-
-              if (user == null || material == null) return null;
-
-              return TrainingEngagementDTO.builder()
-                  .userId(user.getId())
-                  .learner(user.getUsername())
-                  .trainingId(material.getId())
-                  .video(material.getTitle())
-                  .progress(a.getProgress())
-                  .status(a.getStatus())
-                  .build();
-            })
-        .filter(Objects::nonNull)
-        .toList();
+    return assignmentRepo.fetchEngagement(trainingId);
   }
 
   // ================= UPDATE =================
@@ -405,5 +381,15 @@ public class TrainingService {
             .orElseThrow(() -> new RuntimeException("Training not found"));
 
     return TrainingMapper.toEditDTO(material, assignmentRepo.findByTrainingId(trainingId));
+  }
+
+  public List<TrainingEngagementDTO> getEngagementByTrainingId(String trainingId) {
+
+    // optional: validate training exists
+    materialRepo
+        .findByIdAndActiveTrue(trainingId)
+        .orElseThrow(() -> new RuntimeException("Training not found"));
+
+    return assignmentRepo.fetchEngagement(trainingId);
   }
 }

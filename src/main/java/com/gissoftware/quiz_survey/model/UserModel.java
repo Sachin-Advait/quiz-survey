@@ -18,6 +18,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 @EnableMongoAuditing
 public class UserModel {
+
   @Id private String id;
 
   @Indexed(unique = true)
@@ -25,10 +26,14 @@ public class UserModel {
 
   private String username;
   private UserRole role;
-  private String region;
-  private String outlet;
+
+  @Indexed private String region;
+
+  @Indexed private String outlet;
+
   private String position;
 
   @CreatedDate private Instant createdAt;
+
   @Builder.Default private String fcmToken = null;
 }

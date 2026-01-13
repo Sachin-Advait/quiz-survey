@@ -243,6 +243,16 @@ public class TrainingController {
             true, "Engagement fetched successfully", trainingService.getEngagement(trainingId)));
   }
 
+  @GetMapping("/{trainingId}/engagement")
+  public ResponseEntity<ApiResponseDTO<List<TrainingEngagementDTO>>> getEngagementByTrainingId(
+      @PathVariable String trainingId) {
+
+    List<TrainingEngagementDTO> engagement = trainingService.getEngagementByTrainingId(trainingId);
+
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(true, "Engagement fetched successfully", engagement));
+  }
+
   // ================= ADMIN =================
 
   @PutMapping("/{trainingId}")

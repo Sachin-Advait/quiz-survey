@@ -16,17 +16,29 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @NoArgsConstructor
 @AllArgsConstructor
 @EnableMongoAuditing
+@org.springframework.data.mongodb.core.index.CompoundIndex(
+        name = "user_training_unique",
+        def = "{ 'userId': 1, 'trainingId': 1 }",
+        unique = true
+)
 public class TrainingAssignment {
 
-  @Id private String id;
+    @Id
+    private String id;
 
-  private String userId;
-  private String trainingId;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String userId;
 
-  private Integer progress; // %
-  private String status; // not-started, in-progress, completed
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String trainingId;
 
-  private Instant dueDate;
+    private Integer progress;
 
-  @CreatedDate private Instant assignedAt;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String status;
+
+    private Instant dueDate;
+
+    @CreatedDate
+    private Instant assignedAt;
 }
