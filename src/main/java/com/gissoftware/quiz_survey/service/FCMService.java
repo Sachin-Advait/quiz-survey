@@ -1,12 +1,15 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.model.NotificationModel;
 import com.gissoftware.quiz_survey.model.OfferModel;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.UserModel;
+import com.gissoftware.quiz_survey.repository.NotificationRepository;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
+import java.time.Instant;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,10 +22,27 @@ import org.springframework.stereotype.Service;
 public class FCMService {
 
   private final UserRepository userRepository;
+  private final NotificationRepository notificationRepository;
 
   public void sendNotification(
-      String token, String title, String body, String category, String contentId) {
+      String userId, String token, String title, String body, String category, String contentId) {
+
     try {
+      // 1️⃣ Save notification in MongoDB
+      NotificationModel notification =
+          NotificationModel.builder()
+              .userId(userId)
+              .title(title)
+              .message(body)
+              .category(category)
+              .contentId(contentId)
+              .read(false)
+              .createdAt(Instant.now())
+              .build();
+
+      notificationRepository.save(notification);
+
+      // 2️⃣ Send FCM
       Message message =
           Message.builder()
               .setToken(token)
@@ -31,8 +51,7 @@ public class FCMService {
               .putData("contentId", contentId)
               .build();
 
-      String response = FirebaseMessaging.getInstance().send(message);
-      log.info("🔥 FCM sent successfully: {}", response);
+      FirebaseMessaging.getInstance().send(message);
 
     } catch (Exception e) {
       log.error("❌ Error sending FCM notification", e);
@@ -51,7 +70,8 @@ public class FCMService {
               if (isTokenInvalid(user)) return;
 
               sendNotification(
-                  user.getFcmToken(),
+                  user.getId(), // ✅ userId
+                  user.getFcmToken(), // ✅ token
                   title + " Training Assigned",
                   "Please complete before due date",
                   "TRAINING",
@@ -63,6 +83,7 @@ public class FCMService {
   @Async
   public void notifyQuizSurveyAssigned(QuizSurveyModel quiz) {
     if (quiz.getTargetedUsers() == null) return;
+
     quiz.getTargetedUsers()
         .forEach(
             userId ->
@@ -82,7 +103,14 @@ public class FCMService {
                                   + quiz.getType().toLowerCase()
                                   + " has been assigned to you: "
                                   + quiz.getTitle();
-                          sendNotification(user.getFcmToken(), title, body, "QUIZ", quiz.getId());
+
+                          sendNotification(
+                              user.getId(), // ✅
+                              user.getFcmToken(), // ✅
+                              title,
+                              body,
+                              "QUIZ",
+                              quiz.getId());
                         }));
   }
 
@@ -101,8 +129,14 @@ public class FCMService {
 
   private void sendOffer(UserModel user, OfferModel offer) {
     if (isTokenInvalid(user)) return;
+
     sendNotification(
-        user.getFcmToken(), "New Offer Available 🎉", offer.getTitle(), "OFFER", offer.getId());
+        user.getId(), // ✅
+        user.getFcmToken(), // ✅
+        "New Offer Available 🎉",
+        offer.getTitle(),
+        "OFFER",
+        offer.getId());
   }
 
   /* ================= COMMON ================= */

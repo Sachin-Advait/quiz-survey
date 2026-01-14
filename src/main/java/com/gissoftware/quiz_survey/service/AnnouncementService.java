@@ -51,12 +51,12 @@ public class AnnouncementService {
             user -> {
               if (user.getFcmToken() != null) {
                 fcmService.sendNotification(
-                    user.getFcmToken(),
+                    user.getId(), // ✅ userId
+                    user.getFcmToken(), // ✅ token
                     saved.getTitle(),
                     saved.getMessage(),
-                    "QUIZ", // Category used by your service worker
-                    saved.getId() // Will be "?id=savedId"
-                    );
+                    "QUIZ",
+                    saved.getId());
               }
             });
 
@@ -153,7 +153,8 @@ public class AnnouncementService {
                   user -> {
                     if (user.getFcmToken() != null) {
                       fcmService.sendNotification(
-                          user.getFcmToken(),
+                          user.getId(), // ✅ userId
+                          user.getFcmToken(), // ✅ token
                           saved.getTitle(),
                           saved.getMessage(),
                           "QUIZ",
