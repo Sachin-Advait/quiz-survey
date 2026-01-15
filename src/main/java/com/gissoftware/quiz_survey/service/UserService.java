@@ -109,21 +109,24 @@ public class UserService {
     return null;
   }
 
+  public List<String> getAllRegions() {
+    List<UserModel> users = userRepository.findAllRegions();
 
-    public List<String> getAllRegions() {
-        List<UserModel> users = userRepository.findAllRegions();
+    Set<String> regionSet =
+        users.stream()
+            .map(UserModel::getRegion)
+            .filter(Objects::nonNull)
+            .map(String::toLowerCase)
+            .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        Set<String> regionSet =
-                users.stream()
-                        .map(UserModel::getRegion)
-                        .filter(Objects::nonNull)
-                        .map(String::toLowerCase)
-                        .collect(Collectors.toCollection(LinkedHashSet::new));
+    List<String> regions = new ArrayList<>();
+    regions.add("all");
+    regions.addAll(regionSet);
 
-        List<String> regions = new ArrayList<>();
-        regions.add("all");
-        regions.addAll(regionSet);
+    return regions;
+  }
 
-        return regions;
-    }
+  public String getUserNameById(String userId) {
+    return userRepository.findById(userId).map(UserModel::getUsername).orElse("Unknown User");
+  }
 }
