@@ -61,6 +61,7 @@ public class TrainingService {
       // 🔥 clear document fields
       material.setDocumentUrl(null);
       material.setDuration(material.getDuration());
+      material.setDurationSeconds(material.getDurationSeconds());
 
     }
     // ================= DOCUMENT =================
@@ -197,6 +198,7 @@ public class TrainingService {
                   material.getTitle(),
                   material.getType(),
                   material.getDuration(),
+                  material.getDurationSeconds(),
 
                   // ✅ VIDEO (GENERIC)
                   material.getVideoProvider(),
@@ -272,6 +274,10 @@ public class TrainingService {
 
       if (request.getMaterial().getDuration() != null)
         material.setDuration(request.getMaterial().getDuration());
+
+      // ✅ ADD THIS
+      if (request.getMaterial().getDurationSeconds() != null)
+        material.setDurationSeconds(request.getMaterial().getDurationSeconds());
     }
 
     String type = material.getType();

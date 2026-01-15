@@ -13,6 +13,7 @@ public class UserTrainingDTO {
   private String title;
   private String type;
   private String duration;
+  private Integer durationSeconds;
 
   // ✅ VIDEO (GENERIC)
   private String videoProvider;

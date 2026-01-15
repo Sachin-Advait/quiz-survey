@@ -17,6 +17,7 @@ public class TrainingMapper {
         .title(material.getTitle())
         .type(material.getType())
         .duration(material.getDuration())
+        .durationSeconds(material.getDurationSeconds())
         .region(material.getRegion())
         .assignedTo(material.getAssignedTo())
         .completionRate(material.getCompletionRate())

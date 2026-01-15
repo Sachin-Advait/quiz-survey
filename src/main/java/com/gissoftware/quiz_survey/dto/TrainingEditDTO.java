@@ -18,6 +18,7 @@ public class TrainingEditDTO {
   private String type;
   private String duration;
   private String region;
+  private Integer durationSeconds;
 
   private Integer assignedTo;
   private Integer completionRate;
