@@ -280,4 +280,27 @@ public class TrainingController {
         new ApiResponseDTO<>(
             true, "Training fetched successfully", trainingService.getTrainingById(trainingId)));
   }
+
+  @GetMapping("/bunny/video-status/{videoId}")
+  public ResponseEntity<Map<String, Object>> getBunnyVideoStatus(@PathVariable String videoId) {
+
+    String url = "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId;
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyApiKey);
+
+    HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+    RestTemplate restTemplate = new RestTemplate();
+
+    ResponseEntity<Map> response =
+        restTemplate.exchange(url, org.springframework.http.HttpMethod.GET, entity, Map.class);
+
+    Map body = response.getBody();
+
+    return ResponseEntity.ok(
+        Map.of(
+            "status", body.get("status"),
+            "encodeProgress", body.getOrDefault("encodeProgress", 0)));
+  }
 }
