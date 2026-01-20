@@ -38,10 +38,9 @@ public interface TrainingAssignmentRepository extends MongoRepository<TrainingAs
             + "'trainingId': '$training._id', "
             + "'video': '$training.title', "
             + "'progress': '$progress', "
-            + "'status': '$status' "
+            + "'status': '$status', " // ✅ comma
+            + "'viewedAt': '$viewedAt' " // ✅ SAME NAME AS DTO
             + "} }",
-
-        // 🔥 SORT BY PROGRESS DESC
         "{ $sort: { progress: -1 } }"
       })
   List<TrainingEngagementDTO> fetchEngagement(String trainingId);

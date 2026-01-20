@@ -19,7 +19,7 @@ public class OfferReportService {
 
   private final OfferRepository offerRepository;
   private final OfferViewRepository offerViewRepository;
-  private final UserRepository userRepository; // or however you store users
+  private final UserRepository userRepository;
 
   public List<OfferViewReportDTO> getOfferViewReport(String offerId) {
 
@@ -33,20 +33,24 @@ public class OfferReportService {
     Map<String, OfferView> viewedMap =
         views.stream().collect(Collectors.toMap(OfferView::getUserId, v -> v));
 
-    // All users eligible for this offer
     List<UserModel> users = userRepository.findAll();
-    // OR filter by region / targetUsers if needed
 
     return users.stream()
         .map(
-            user ->
-                new OfferViewReportDTO(
-                    offer.getId(),
-                    offer.getTitle(),
-                    user.getId(),
-                    user.getUsername(),
-                    viewedMap.containsKey(user.getId())))
-        // 🔥 sort: viewed=true first, viewed=false last
+            user -> {
+              OfferView view = viewedMap.get(user.getId());
+
+              boolean viewed = view != null;
+
+              return new OfferViewReportDTO(
+                  offer.getId(),
+                  offer.getTitle(),
+                  user.getId(),
+                  user.getUsername(),
+                  viewed,
+                  viewed ? view.getViewedAt() : null // ✅ FIX
+                  );
+            })
         .sorted((a, b) -> Boolean.compare(b.isViewed(), a.isViewed()))
         .toList();
   }

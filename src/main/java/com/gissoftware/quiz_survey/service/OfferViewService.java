@@ -2,6 +2,7 @@ package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.model.OfferView;
 import com.gissoftware.quiz_survey.repository.OfferViewRepository;
+import java.time.Instant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -10,20 +11,20 @@ import org.springframework.stereotype.Service;
 public class OfferViewService {
 
   private final OfferViewRepository offerViewRepository;
-  private final UserService userService; // 👈 inject this
+  private final UserService userService;
 
   public void markOfferViewed(String offerId, String userId) {
 
-    boolean alreadyViewed = offerViewRepository.findByOfferIdAndUserId(offerId, userId).isPresent();
+    OfferView view = offerViewRepository.findByOfferIdAndUserId(offerId, userId).orElse(null);
 
-    if (alreadyViewed) {
-      return; // idempotent
+    if (view == null) {
+      String userName = userService.getUserNameById(userId);
+
+      view = OfferView.builder().offerId(offerId).userId(userId).userName(userName).build();
     }
 
-    // 🔐 Resolve userName from backend
-    String userName = userService.getUserNameById(userId);
-
-    OfferView view = OfferView.builder().offerId(offerId).userId(userId).userName(userName).build();
+    // ✅ ALWAYS update view date
+    view.setViewedAt(Instant.now());
 
     offerViewRepository.save(view);
   }

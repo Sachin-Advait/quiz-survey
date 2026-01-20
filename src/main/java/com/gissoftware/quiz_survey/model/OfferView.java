@@ -2,7 +2,6 @@ package com.gissoftware.quiz_survey.model;
 
 import java.time.Instant;
 import lombok.*;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
@@ -26,5 +25,5 @@ public class OfferView {
   private String userId;
   private String userName;
 
-  @CreatedDate private Instant viewedAt;
+  private Instant viewedAt;
 }

@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.dto;
 
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -14,4 +15,5 @@ public class OfferViewReportDTO {
   private String userName;
 
   private boolean viewed;
+    private Instant viewedAt;
 }

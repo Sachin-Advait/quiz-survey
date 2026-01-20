@@ -1,5 +1,7 @@
 package com.gissoftware.quiz_survey.model;
 
+import java.time.Instant;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -9,9 +11,6 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.Instant;
-import java.util.List;
-
 @Document("offers")
 @Data
 @Builder
@@ -20,25 +19,27 @@ import java.util.List;
 @EnableMongoAuditing
 public class OfferModel {
 
-    @Id
-    private String id;
+  @Id private String id;
 
-    private String title;
-    private String description;
+  private OfferType type;
 
-    private String category; // Offer & Plans, Enhancement, etc
-    private List<String> tags;
+  private String title;
+  private String description;
 
-    private String priority; // low | medium | high
-    private String discount;
+  private String category; // Offer & Plans, Enhancement, etc
+  private List<String> tags;
 
-    private String region;
-    private List<String> targetUsers;
+  private String priority; // low | medium | high
+  private String discount;
 
-    private String status; // active | inactive | draft
+  private String region;
+  private List<String> targetUsers;
 
-    private Instant validUntil;
+  private String status; // active | inactive | draft
 
-    @CreatedDate
-    private Instant createdAt;
+  private Instant validUntil;
+
+  private String imageUrl;
+
+  @CreatedDate private Instant createdAt;
 }

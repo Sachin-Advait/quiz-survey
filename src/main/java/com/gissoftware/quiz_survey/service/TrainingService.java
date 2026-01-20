@@ -225,6 +225,10 @@ public class TrainingService {
       assignment.setProgress(progress);
     }
 
+    if ((assignment.getViewedAt() == null && progress > 0) || progress >= 100) {
+      assignment.setViewedAt(Instant.now());
+    }
+
     if (assignment.getProgress() >= 100) {
       assignment.setStatus("completed");
     } else if (progress > 0) {

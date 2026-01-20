@@ -5,9 +5,16 @@ import com.gissoftware.quiz_survey.model.OfferModel;
 import com.gissoftware.quiz_survey.service.OfferService;
 import com.gissoftware.quiz_survey.service.OfferViewService;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user/offers")
@@ -16,6 +23,62 @@ public class OfferController {
 
   private final OfferService offerService;
   private final OfferViewService offerViewService;
+
+  @Value("${bunny.storage.api-key}")
+  private String bunnyStorageApiKey;
+
+  @Value("${bunny.storage.cdn-url}")
+  private String bunnyStorageCdnUrl;
+
+  @Value("${bunny.library-id}")
+  private String libraryId;
+
+  @Value("${bunny.storage.zone}")
+  private String bunnyStorageZone;
+
+  @Value("${bunny.api-key}")
+  private String bunnyApiKey;
+
+  @PostMapping("/bunny/upload-image")
+  public ResponseEntity<Map<String, String>> uploadOfferImage(
+      @RequestParam("file") MultipartFile file) throws Exception {
+
+    // 1️⃣ Validate
+    if (file == null || file.isEmpty()) {
+      throw new IllegalArgumentException("Image file is required");
+    }
+
+    List<String> allowed = List.of("image/jpeg", "image/png", "image/webp", "image/jpg");
+
+    if (!allowed.contains(file.getContentType())) {
+      throw new IllegalArgumentException("Only image files are allowed");
+    }
+
+    // 2️⃣ Filename
+    String original = file.getOriginalFilename();
+    if (original == null || !original.contains(".")) {
+      throw new IllegalArgumentException("Invalid image file");
+    }
+    String extension = original.substring(original.lastIndexOf("."));
+
+    String fileName =
+        "offers/" + System.currentTimeMillis() + "_" + java.util.UUID.randomUUID() + extension;
+
+    // 3️⃣ Bunny upload URL
+    String uploadUrl = "https://sg.storage.bunnycdn.com/" + bunnyStorageZone + "/" + fileName;
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyStorageApiKey);
+    headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+    HttpEntity<byte[]> entity = new HttpEntity<>(file.getBytes(), headers);
+
+    new RestTemplate().put(uploadUrl, entity);
+
+    // 4️⃣ Return CDN URL
+    return ResponseEntity.ok(
+        Map.of("imageUrl", bunnyStorageCdnUrl + "/" + fileName, "type", "image"));
+  }
 
   // 🔐 ADMIN
   @PostMapping
