@@ -13,7 +13,8 @@ public class OfferViewReportDTO {
 
   private String userId;
   private String userName;
+  private String staffId;
 
   private boolean viewed;
-    private Instant viewedAt;
+  private Instant viewedAt;
 }

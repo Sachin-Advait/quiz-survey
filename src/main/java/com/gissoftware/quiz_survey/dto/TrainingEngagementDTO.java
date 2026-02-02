@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class TrainingEngagementDTO {
   private String userId;
+  private String staffId;
   private String learner;
   private String trainingId;
   private String video;

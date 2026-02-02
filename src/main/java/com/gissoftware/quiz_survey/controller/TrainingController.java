@@ -59,28 +59,58 @@ public class TrainingController {
   public ResponseEntity<Map<String, String>> uploadDocument(
       @RequestParam("file") MultipartFile file) throws Exception {
 
-    // 1️⃣ Validate file type
-    List<String> allowed =
+    if (file == null || file.isEmpty()) {
+      throw new IllegalArgumentException("File is required");
+    }
+
+    String contentType = file.getContentType();
+    String originalName =
+        file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+
+    // Allowed MIME types
+    List<String> allowedMimeTypes =
         List.of(
             "application/pdf",
+
+            // Word
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+            // Excel
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel.sheet.macroEnabled.12",
+            "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+            "text/csv",
+
+            // PowerPoint
             "application/vnd.ms-powerpoint",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation");
 
-    if (!allowed.contains(file.getContentType())) {
+    // Extension fallback (important for browser inconsistencies)
+    boolean isExcelOrPpt =
+        originalName.endsWith(".xls")
+            || originalName.endsWith(".xlsx")
+            || originalName.endsWith(".xlsm")
+            || originalName.endsWith(".xlsb")
+            || originalName.endsWith(".csv")
+            || originalName.endsWith(".ppt")
+            || originalName.endsWith(".pptx")
+            || originalName.endsWith(".pdf")
+            || originalName.endsWith(".doc")
+            || originalName.endsWith(".docx");
+
+    if (!allowedMimeTypes.contains(contentType) && !isExcelOrPpt) {
       throw new IllegalArgumentException("Unsupported document type");
     }
 
-    // 3️⃣ Generate filename
+    // Generate safe file name
     String fileName =
-        System.currentTimeMillis() + "_" + file.getOriginalFilename().replaceAll("\\s+", "_");
+        System.currentTimeMillis() + "_" + originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
 
     String uploadUrl = "https://sg.storage.bunnycdn.com/" + bunnyStorageZone + "/" + fileName;
 
-    // 4️⃣ Upload to Bunny Storage
+    // Upload to Bunny Storage
     HttpHeaders headers = new HttpHeaders();
     headers.set("AccessKey", bunnyStorageApiKey);
     headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
@@ -90,7 +120,7 @@ public class TrainingController {
     RestTemplate restTemplate = new RestTemplate();
     restTemplate.put(uploadUrl, entity);
 
-    // 5️⃣ Public CDN URL
+    // Public CDN URL response
     return ResponseEntity.ok(
         Map.of(
             "documentUrl",
@@ -156,17 +186,6 @@ public class TrainingController {
             ));
   }
 
-  // ================= ADMIN =================
-  //  @PostMapping
-  //  public ResponseEntity<ApiResponseDTO<TrainingMaterial>> uploadTraining(
-  //      @RequestBody TrainingUploadAssignDTO request) {
-  //
-  //    TrainingMaterial savedMaterial = trainingService.uploadAndAssign(request);
-  //
-  //    return ResponseEntity.ok(
-  //        new ApiResponseDTO<>(true, "Training uploaded and assigned successfully",
-  // savedMaterial));
-  //  }
   @PostMapping
   public ResponseEntity<ApiResponseDTO<Void>> uploadTraining(
       @RequestBody TrainingUploadAssignDTO request) {
@@ -241,6 +260,22 @@ public class TrainingController {
     return ResponseEntity.ok(
         new ApiResponseDTO<>(
             true, "Engagement fetched successfully", trainingService.getEngagement(trainingId)));
+  }
+
+  @GetMapping("/engagement/excel")
+  public ResponseEntity<byte[]> downloadEngagementExcel(
+      @RequestParam(required = false) String trainingId) {
+
+    byte[] excelBytes = trainingService.getEngagementExcel(trainingId);
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(
+        MediaType.parseMediaType(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    headers.setContentDispositionFormData("attachment", "training_engagement.xlsx");
+    headers.setCacheControl("no-cache, no-store, must-revalidate");
+
+    return ResponseEntity.ok().headers(headers).body(excelBytes);
   }
 
   @GetMapping("/{trainingId}/engagement")

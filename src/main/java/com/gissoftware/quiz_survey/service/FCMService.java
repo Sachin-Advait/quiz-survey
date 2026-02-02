@@ -64,19 +64,22 @@ public class FCMService {
 
     List<UserModel> users = userRepository.findAllById(userIds);
 
-    users.parallelStream()
-        .forEach(
-            user -> {
-              if (isTokenInvalid(user)) return;
+    users.forEach(
+        user -> {
+          //          if (isTokenInvalid(user)) return;
 
-              sendNotification(
-                  user.getId(), // ✅ userId
-                  user.getFcmToken(), // ✅ token
-                  title + " Training Assigned",
-                  "Please complete before due date",
-                  "TRAINING",
-                  trainingId);
-            });
+          try {
+            sendNotification(
+                user.getId(),
+                user.getFcmToken(),
+                title + " Training Assigned",
+                "Please complete before due date",
+                "TRAINING",
+                trainingId);
+          } catch (Exception e) {
+            log.error("❌ FCM failed for userId={}, token={}", user.getId(), user.getFcmToken(), e);
+          }
+        });
   }
 
   /* ================= QUIZ / SURVEY ================= */
@@ -91,7 +94,7 @@ public class FCMService {
                     .findById(userId)
                     .ifPresent(
                         user -> {
-                          if (isTokenInvalid(user)) return;
+                          //                          if (isTokenInvalid(user)) return;
 
                           String title =
                               quiz.getType().equalsIgnoreCase("Quiz")
@@ -128,7 +131,7 @@ public class FCMService {
   }
 
   private void sendOffer(UserModel user, OfferModel offer) {
-    if (isTokenInvalid(user)) return;
+    //    if (isTokenInvalid(user)) return;
 
     sendNotification(
         user.getId(), // ✅

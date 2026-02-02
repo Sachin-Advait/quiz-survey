@@ -35,11 +35,12 @@ public interface TrainingAssignmentRepository extends MongoRepository<TrainingAs
         "{ $project: { "
             + "'userId': '$user._id', "
             + "'learner': '$user.username', "
+            + "'staffId': '$user.staffId', " // ✅ added
             + "'trainingId': '$training._id', "
             + "'video': '$training.title', "
             + "'progress': '$progress', "
-            + "'status': '$status', " // ✅ comma
-            + "'viewedAt': '$viewedAt' " // ✅ SAME NAME AS DTO
+            + "'status': '$status', "
+            + "'viewedAt': '$viewedAt' "
             + "} }",
         "{ $sort: { progress: -1 } }"
       })

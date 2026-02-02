@@ -3,8 +3,13 @@ package com.gissoftware.quiz_survey.controller;
 import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.service.*;
+import java.io.ByteArrayInputStream;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +23,9 @@ public class QuizSurveyAdminController {
   private final AdminSurveyService adminSurveyService;
   private final UserScoreService userScoreService;
   private final UserClientService userClientService;
+  private final ParticipationService participationService;
+  private final OverallParticipationService overallParticipationService;
+  private final ParticipationExcelService participationExcelService;
 
   @PostMapping
   public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> createQuizSurvey(
@@ -110,5 +118,68 @@ public class QuizSurveyAdminController {
 
     return ResponseEntity.ok(
         new ApiResponseDTO<>(true, "User score calculated successfully", score));
+  }
+
+  @GetMapping("/participation/{quizSurveyId}")
+  public ResponseEntity<ApiResponseDTO<List<ParticipationStatusDTO>>> getParticipationStatus(
+      @PathVariable String quizSurveyId) {
+
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(
+            true,
+            "Participation status fetched successfully",
+            participationService.getParticipationStatus(quizSurveyId)));
+  }
+
+  @GetMapping("/participation/overall")
+  public ResponseEntity<ApiResponseDTO<List<OverallParticipationDTO>>> getOverallParticipation() {
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(
+            true,
+            "Overall quiz & survey participation fetched",
+            overallParticipationService.getOverallParticipation()));
+  }
+
+  @GetMapping("/participation/{quizSurveyId}/excel")
+  public ResponseEntity<InputStreamResource> downloadParticipationExcel(
+      @PathVariable String quizSurveyId) throws Exception {
+
+    QuizSurveyModel quizSurvey = quizSurveyService.getById(quizSurveyId);
+
+    String safeTitle = quizSurvey.getTitle().replaceAll("[^a-zA-Z0-9_-]", "-");
+
+    String filename = "Per-" + safeTitle + "-report.xlsx";
+
+    ByteArrayInputStream stream = participationExcelService.generateByQuizSurvey(quizSurveyId);
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
+        .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+        .header(HttpHeaders.PRAGMA, "no-cache")
+        .header(HttpHeaders.EXPIRES, "0")
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(new InputStreamResource(stream));
+  }
+
+  @GetMapping("/participation/overall/excel")
+  public ResponseEntity<InputStreamResource> downloadOverallExcel() throws Exception {
+
+    String filename = "Overall-Quiz-Survey-Report.xlsx";
+
+    ByteArrayInputStream stream = participationExcelService.generateOverall();
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
+        .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+        .header(HttpHeaders.PRAGMA, "no-cache")
+        .header(HttpHeaders.EXPIRES, "0")
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(new InputStreamResource(stream));
   }
 }

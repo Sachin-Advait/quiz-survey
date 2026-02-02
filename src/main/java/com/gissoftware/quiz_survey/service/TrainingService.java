@@ -10,13 +10,18 @@ import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import com.gissoftware.quiz_survey.repository.TrainingAssignmentRepository;
 import com.gissoftware.quiz_survey.repository.TrainingMaterialRepository;
 import com.gissoftware.quiz_survey.repository.UserRepository;
+import java.io.ByteArrayOutputStream;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -401,5 +406,74 @@ public class TrainingService {
         .orElseThrow(() -> new RuntimeException("Training not found"));
 
     return assignmentRepo.fetchEngagement(trainingId);
+  }
+
+  public byte[] getEngagementExcel(String trainingId) {
+
+    DateTimeFormatter dateFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault());
+
+    DateTimeFormatter dateTimeFormatter =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
+
+    List<TrainingEngagementDTO> data = assignmentRepo.fetchEngagement(trainingId);
+
+    try (Workbook workbook = new XSSFWorkbook()) {
+
+      Sheet sheet = workbook.createSheet("Engagement");
+
+      // ---------- HEADER ----------
+      Row header = sheet.createRow(0);
+      String[] columns = {
+        "Staff ID",
+        "Learner Name",
+        "Training Title",
+        "Progress (%)",
+        "Status",
+        "Viewed Date",
+        "Viewed Timestamp"
+      };
+
+      CellStyle headerStyle = workbook.createCellStyle();
+      Font font = workbook.createFont();
+      font.setBold(true);
+      headerStyle.setFont(font);
+
+      for (int i = 0; i < columns.length; i++) {
+        Cell cell = header.createCell(i);
+        cell.setCellValue(columns[i]);
+        cell.setCellStyle(headerStyle);
+      }
+
+      // ---------- DATA ----------
+      int rowIdx = 1;
+      for (TrainingEngagementDTO dto : data) {
+        Row row = sheet.createRow(rowIdx++);
+
+        row.createCell(0).setCellValue(dto.getStaffId());
+        row.createCell(1).setCellValue(dto.getLearner());
+        row.createCell(2).setCellValue(dto.getVideo());
+        row.createCell(3).setCellValue(dto.getProgress());
+        row.createCell(4).setCellValue(dto.getStatus());
+        row.createCell(5)
+            .setCellValue(dto.getViewedAt() != null ? dateFormatter.format(dto.getViewedAt()) : "");
+
+        row.createCell(6)
+            .setCellValue(
+                dto.getViewedAt() != null ? dateTimeFormatter.format(dto.getViewedAt()) : "");
+      }
+
+      // ---------- AUTO SIZE ----------
+      for (int i = 0; i < columns.length; i++) {
+        sheet.autoSizeColumn(i);
+      }
+
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      workbook.write(out);
+      return out.toByteArray();
+
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to generate engagement Excel", e);
+    }
   }
 }
