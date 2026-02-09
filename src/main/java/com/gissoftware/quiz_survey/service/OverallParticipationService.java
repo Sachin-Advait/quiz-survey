@@ -7,13 +7,12 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
@@ -56,13 +55,23 @@ public class OverallParticipationService {
         Integer score = null;
         Integer maxScore = null;
         String status;
+        Double percentage = null;
 
         if (!participated) {
           status = isQuiz ? "NOT_ATTEMPTED" : "NOT_SUBMITTED";
         } else if (isQuiz) {
           score = resp.getScore();
           maxScore = resp.getMaxScore();
-          status = score >= 0.5 * maxScore ? "PASS" : "FAIL";
+
+          if (score != null && maxScore != null && maxScore > 0) {
+            percentage = (score * 100.0) / maxScore;
+          }
+          if (score != null && maxScore != null) {
+            status = score >= 0.5 * maxScore ? "PASS" : "FAIL";
+          } else {
+            status = "FAIL";
+          }
+
         } else {
           status = "SUBMITTED";
         }
@@ -78,6 +87,7 @@ public class OverallParticipationService {
                 .participated(participated)
                 .score(score)
                 .maxScore(maxScore)
+                .percentage(percentage)
                 .result(status)
                 .build());
       }

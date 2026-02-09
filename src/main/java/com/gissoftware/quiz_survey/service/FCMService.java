@@ -40,13 +40,13 @@ public class FCMService {
               .createdAt(Instant.now())
               .build();
 
-      notificationRepository.save(notification);
+      NotificationModel saved = notificationRepository.save(notification);
 
-      // 2️⃣ Send FCM
       Message message =
           Message.builder()
               .setToken(token)
               .setNotification(Notification.builder().setTitle(title).setBody(body).build())
+              .putData("notificationId", saved.getId()) // ✅ THIS
               .putData("category", category)
               .putData("contentId", contentId)
               .build();
@@ -54,7 +54,6 @@ public class FCMService {
       FirebaseMessaging.getInstance().send(message);
 
     } catch (Exception e) {
-      log.error("❌ Error sending FCM notification", e);
     }
   }
 
@@ -77,7 +76,6 @@ public class FCMService {
                 "TRAINING",
                 trainingId);
           } catch (Exception e) {
-            log.error("❌ FCM failed for userId={}, token={}", user.getId(), user.getFcmToken(), e);
           }
         });
   }

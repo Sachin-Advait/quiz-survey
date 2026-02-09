@@ -55,15 +55,24 @@ public class ParticipationService {
               Integer score = null;
               Integer maxScore = null;
               String result;
+              Double percentage = null;
 
               if (!participated) {
                 result = isQuiz ? "NOT_ATTEMPTED" : "NOT_SUBMITTED";
               } else if (isQuiz) {
                 score = resp.getScore();
                 maxScore = resp.getMaxScore();
-                result = score >= 0.5 * maxScore ? "PASS" : "FAIL";
+
+                if (score != null && maxScore != null) {
+                  result = score >= 0.5 * maxScore ? "PASS" : "FAIL";
+                } else {
+                  result = "FAIL";
+                }
               } else {
                 result = "SUBMITTED";
+              }
+              if (isQuiz && score != null && maxScore != null && maxScore > 0) {
+                percentage = (score * 100.0) / maxScore;
               }
 
               return ParticipationStatusDTO.builder()
@@ -76,6 +85,7 @@ public class ParticipationService {
                   .participated(participated)
                   .score(score)
                   .maxScore(maxScore)
+                  .percentage(percentage)
                   .result(result)
                   .build();
             })

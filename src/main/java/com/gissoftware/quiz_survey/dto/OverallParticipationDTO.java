@@ -18,6 +18,7 @@ public class OverallParticipationDTO {
 
   private Integer score; // quiz only
   private Integer maxScore; // quiz only
+  private Double percentage;
 
   private String result; // PASS / FAIL / SUBMITTED / NOT_SUBMITTED
 }

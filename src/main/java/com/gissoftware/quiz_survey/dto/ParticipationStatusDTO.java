@@ -17,6 +17,7 @@ public class ParticipationStatusDTO {
 
   private Integer score; // only for quiz
   private Integer maxScore; // only for quiz
+  private Double percentage;
 
   private String result; // PASS / FAIL / SUBMITTED / NOT_SUBMITTED
 }

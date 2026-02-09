@@ -6,6 +6,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -35,6 +36,8 @@ public class ParticipationExcelService {
 
     try (Workbook workbook = new XSSFWorkbook();
         ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      CellStyle percentStyle = workbook.createCellStyle();
+      percentStyle.setDataFormat(workbook.createDataFormat().getFormat("0.00%"));
 
       boolean isSurvey =
           !overall
@@ -56,7 +59,15 @@ public class ParticipationExcelService {
       if (overall) {
         columns =
             new String[] {
-              "Title", "Type", "StaffId", "Username", "Participated", "Score", "MaxScore", "Result"
+              "Title",
+              "Type",
+              "StaffId",
+              "Username",
+              "Participated",
+              "Score",
+              "MaxScore",
+              "Percentage",
+              "Result"
             };
       } else if (isSurvey) {
         columns =
@@ -64,8 +75,15 @@ public class ParticipationExcelService {
       } else {
         columns =
             new String[] {
-              "StaffId", "Username", "Region", "Outlet",
-              "Participated", "Score", "MaxScore", "Result"
+              "StaffId",
+              "Username",
+              "Region",
+              "Outlet",
+              "Participated",
+              "Score",
+              "MaxScore",
+              "Percentage",
+              "Result"
             };
       }
 
@@ -87,8 +105,12 @@ public class ParticipationExcelService {
 
           if (d.getScore() != null) row.createCell(5).setCellValue(d.getScore());
           if (d.getMaxScore() != null) row.createCell(6).setCellValue(d.getMaxScore());
+          if (d.getPercentage() != null) {
+            row.createCell(7).setCellValue(d.getPercentage() / 100);
+            row.getCell(7).setCellStyle(percentStyle);
+          }
 
-          row.createCell(7).setCellValue(d.getResult());
+          row.createCell(8).setCellValue(d.getResult());
 
         } else {
           ParticipationStatusDTO d = (ParticipationStatusDTO) obj;
@@ -102,14 +124,23 @@ public class ParticipationExcelService {
           if (!isSurvey) {
             if (d.getScore() != null) row.createCell(col).setCellValue(d.getScore());
             col++;
+
             if (d.getMaxScore() != null) row.createCell(col).setCellValue(d.getMaxScore());
+            col++;
+
+            if (d.getPercentage() != null) {
+              row.createCell(col).setCellValue(d.getPercentage() / 100);
+              row.getCell(col).setCellStyle(percentStyle);
+            }
             col++;
           }
 
           row.createCell(col).setCellValue(d.getResult());
         }
       }
-
+      for (int i = 0; i < columns.length; i++) {
+        sheet.autoSizeColumn(i);
+      }
       workbook.write(out);
       return new ByteArrayInputStream(out.toByteArray());
     }
