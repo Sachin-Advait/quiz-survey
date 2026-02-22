@@ -1,6 +1,8 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.service.UserUploadService;
+import java.io.InputStream;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,9 +12,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.io.InputStream;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/user")
@@ -24,7 +23,7 @@ public class UserUploadController {
     @GetMapping("/upload")
     public ResponseEntity<UploadResponse> uploadFromResources() {
         try {
-            String filename = "master_4_2025.xlsx";
+            String filename = "master_1_2026.xlsx";
 
             // Parse quarter and year
             String[] parts = filename.replace(".xlsx", "").split("_");
