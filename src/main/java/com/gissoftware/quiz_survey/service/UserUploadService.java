@@ -3,10 +3,10 @@ package com.gissoftware.quiz_survey.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gissoftware.quiz_survey.controller.UserUploadController;
+import lombok.AllArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.bson.Document;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.index.Index;
@@ -20,11 +20,9 @@ import java.io.InputStream;
 import java.util.*;
 
 @Service
+@AllArgsConstructor
 public class UserUploadService {
 
-    private final int integerLikeCount = 0;
-
-    @Autowired
     private MongoTemplate mongoTemplate;
 
     public UserUploadController.UploadResponse uploadUsers(
@@ -161,7 +159,6 @@ public class UserUploadService {
         System.out.println("Inserted: " + insertedCount);
         System.out.println("Updated: " + updatedCount);
         System.out.println("Errors: " + errorCount);
-        System.out.println("Total integer-like numeric cells: " + integerLikeCount);
 
         return UserUploadController.UploadResponse.builder()
                 .success(true)
