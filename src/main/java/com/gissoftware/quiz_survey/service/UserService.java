@@ -10,6 +10,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -38,18 +39,39 @@ public class UserService {
 
     public UserModel syncUser(UserModel user) {
         Optional<UserModel> userModel = userRepository.findByStaffIdAndActiveUserTrue(user.getStaffId());
+        Optional<UserModel> inactiveUser = userRepository.findByStaffId(user.getStaffId());
 
         if (userModel.isPresent()) {
             userModel.get().setFcmToken(user.getFcmToken());
             userRepository.save(userModel.get());
             return userModel.get();
+        } else if (inactiveUser.isPresent()) {
+            inactiveUser.get().setFcmToken(user.getFcmToken());
+            userRepository.save(inactiveUser.get());
+            return inactiveUser.get();
         }
 
-        // Set default role if not provided
+        LocalDate now = LocalDate.now();
+        int month = now.getMonthValue();
+        int quarterNum = (month - 1) / 3 + 1;
+
+        if (user.getQuarter() == null) {
+            user.setQuarter("Q" + quarterNum);
+        }
+
+        if (user.getYear() == null) {
+            user.setYear(now.getYear());
+        }
+
+        // ✅ Defaults
         if (user.getRole() == null) {
             user.setRole(UserRole.USER);
         }
 
+        if (user.getActiveUser() == null) {
+            user.setActiveUser(true);
+        }
+        
         return userRepository.save(user);
     }
 
