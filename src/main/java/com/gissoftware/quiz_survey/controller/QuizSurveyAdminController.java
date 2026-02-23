@@ -3,8 +3,6 @@ package com.gissoftware.quiz_survey.controller;
 import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.service.*;
-import java.io.ByteArrayInputStream;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -13,173 +11,187 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.ByteArrayInputStream;
+import java.time.YearMonth;
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/admin/quiz-survey")
 @RequiredArgsConstructor
 public class QuizSurveyAdminController {
 
-  private final QuizSurveyService quizSurveyService;
-  private final AdminQuizService adminQuizService;
-  private final AdminSurveyService adminSurveyService;
-  private final UserScoreService userScoreService;
-  private final UserClientService userClientService;
-  private final ParticipationService participationService;
-  private final OverallParticipationService overallParticipationService;
-  private final ParticipationExcelService participationExcelService;
+    private final QuizSurveyService quizSurveyService;
+    private final AdminQuizService adminQuizService;
+    private final AdminSurveyService adminSurveyService;
+    private final UserScoreService userScoreService;
+    private final UserClientService userClientService;
+    private final ParticipationService participationService;
+    private final OverallParticipationService overallParticipationService;
+    private final ParticipationExcelService participationExcelService;
 
-  @PostMapping
-  public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> createQuizSurvey(
-      @RequestBody QuizSurveyModel model) {
-    QuizSurveyModel created = quizSurveyService.createQuizSurvey(model);
-    return ResponseEntity.status(HttpStatus.CREATED)
-        .body(new ApiResponseDTO<>(true, "Quiz & survey created successfully", created));
-  }
+    @PostMapping
+    public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> createQuizSurvey(
+            @RequestBody QuizSurveyModel model) {
+        QuizSurveyModel created = quizSurveyService.createQuizSurvey(model);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(new ApiResponseDTO<>(true, "Quiz & survey created successfully", created));
+    }
 
-  @PutMapping("/{id}")
-  public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> updateQuizSurvey(
-      @PathVariable String id, @RequestBody QuizSurveyModel updatedModel) {
-    updatedModel.setId(id);
-    QuizSurveyModel updated = quizSurveyService.updateQuizSurvey(updatedModel);
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Quiz & survey updated successfully", updated));
-  }
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> updateQuizSurvey(
+            @PathVariable String id, @RequestBody QuizSurveyModel updatedModel) {
+        updatedModel.setId(id);
+        QuizSurveyModel updated = quizSurveyService.updateQuizSurvey(updatedModel);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Quiz & survey updated successfully", updated));
+    }
 
-  @DeleteMapping("/{id}")
-  public ResponseEntity<ApiResponseDTO<Void>> deleteQuizSurvey(@PathVariable String id) {
-    quizSurveyService.deleteQuizSurvey(id);
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Quiz & survey deleted successfully", null));
-  }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<Void>> deleteQuizSurvey(@PathVariable String id) {
+        quizSurveyService.deleteQuizSurvey(id);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Quiz & survey deleted successfully", null));
+    }
 
-  @GetMapping("/quiz-insights/{quizSurveyId}")
-  public ResponseEntity<ApiResponseDTO<QuizInsightsDTO>> getQuizInsights(
-      @PathVariable String quizSurveyId) {
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(
-            true,
-            "Quiz insights retrieved successfully",
-            adminQuizService.getQuizInsights(quizSurveyId)));
-  }
+    @GetMapping("/quiz-insights/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizInsightsDTO>> getQuizInsights(
+            @PathVariable String quizSurveyId) {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(
+                        true,
+                        "Quiz insights retrieved successfully",
+                        adminQuizService.getQuizInsights(quizSurveyId)));
+    }
 
-  @GetMapping("/completion-stats/{quizSurveyId}")
-  public ResponseEntity<ApiResponseDTO<QuizCompletionStatsDTO>> getQuizStats(
-      @PathVariable String quizSurveyId) {
-    QuizCompletionStatsDTO stats = adminQuizService.getQuizCompletionStats(quizSurveyId);
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Quiz completion stats retrieved successfully", stats));
-  }
+    @GetMapping("/completion-stats/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizCompletionStatsDTO>> getQuizStats(
+            @PathVariable String quizSurveyId) {
+        QuizCompletionStatsDTO stats = adminQuizService.getQuizCompletionStats(quizSurveyId);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Quiz completion stats retrieved successfully", stats));
+    }
 
-  @GetMapping("/segmentation/{surveyId}")
-  public ResponseEntity<ApiResponseDTO<QuizResponseByRegionDTO>> getQuizResponseByRegion(
-      @PathVariable String surveyId) {
-    QuizResponseByRegionDTO data = adminQuizService.getQuizResponseByRegion(surveyId);
+    @GetMapping("/segmentation/{surveyId}")
+    public ResponseEntity<ApiResponseDTO<QuizResponseByRegionDTO>> getQuizResponseByRegion(
+            @PathVariable String surveyId) {
+        QuizResponseByRegionDTO data = adminQuizService.getQuizResponseByRegion(surveyId);
 
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Quiz segmentation retrieved successfully", data));
-  }
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Quiz segmentation retrieved successfully", data));
+    }
 
-  @GetMapping("/survey-insights/{quizSurveyId}")
-  public ResponseEntity<ApiResponseDTO<SurveyResponseStatsDTO>> getSurveyInsights(
-      @PathVariable String quizSurveyId) {
-    SurveyResponseStatsDTO insights = adminSurveyService.getSurveyInsightStats(quizSurveyId);
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Survey insights retrieved successfully", insights));
-  }
+    @GetMapping("/survey-insights/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<SurveyResponseStatsDTO>> getSurveyInsights(
+            @PathVariable String quizSurveyId) {
+        SurveyResponseStatsDTO insights = adminSurveyService.getSurveyInsightStats(quizSurveyId);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Survey insights retrieved successfully", insights));
+    }
 
-  @GetMapping("/survey-activity-stats/{id}")
-  public ResponseEntity<ApiResponseDTO<SurveyActivityStatsDTO>> getSurveyActivityStats(
-      @PathVariable String id) {
-    SurveyActivityStatsDTO stats = adminSurveyService.getSurveyActivityStats(id);
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Survey stats retrieved successfully", stats));
-  }
+    @GetMapping("/survey-activity-stats/{id}")
+    public ResponseEntity<ApiResponseDTO<SurveyActivityStatsDTO>> getSurveyActivityStats(
+            @PathVariable String id) {
+        SurveyActivityStatsDTO stats = adminSurveyService.getSurveyActivityStats(id);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Survey stats retrieved successfully", stats));
+    }
 
-  @GetMapping("/satisfaction-insights/{surveyId}")
-  public ResponseEntity<ApiResponseDTO<SatisfactionInsightResponse>> getSatisfactionInsights(
-      @PathVariable String surveyId) {
+    @GetMapping("/satisfaction-insights/{surveyId}")
+    public ResponseEntity<ApiResponseDTO<SatisfactionInsightResponse>> getSatisfactionInsights(
+            @PathVariable String surveyId) {
 
-    SatisfactionInsightResponse satisfactionInsightResponse =
-        adminSurveyService.getSatisfactionInsights(surveyId);
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(
-            true,
-            "Survey satisfaction insights retrieved successfully",
-            satisfactionInsightResponse));
-  }
+        SatisfactionInsightResponse satisfactionInsightResponse =
+                adminSurveyService.getSatisfactionInsights(surveyId);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(
+                        true,
+                        "Survey satisfaction insights retrieved successfully",
+                        satisfactionInsightResponse));
+    }
 
-  @GetMapping("/user-score/by-staff/{staffId}")
-  public ResponseEntity<ApiResponseDTO<UserSingleScoreDTO>> getUserScoreByStaffId(
-      @PathVariable String staffId) {
-    // 1️⃣ Resolve userId from staffId
-    String userId = userClientService.getUserIdByClientId(staffId).getUserId();
+    @GetMapping("/user-score/by-staff/{staffId}")
+    public ResponseEntity<ApiResponseDTO<UserSingleScoreDTO>> getUserScoreByStaffId(
+            @PathVariable String staffId,
+            @RequestParam(defaultValue = "0") String quarter,
+            @RequestParam(defaultValue = "0") Integer year
+    ) {
+        if ("0".equals(quarter) || year == 0) {
+            YearMonth now = YearMonth.now();
 
-    // 2️⃣ Calculate score using userId
-    UserSingleScoreDTO score = userScoreService.calculateUserScore(userId);
+            int currentQuarter = ((now.getMonthValue() - 1) / 3) + 1;
+            quarter = "Q" + currentQuarter;
+            year = now.getYear();
+        }
 
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "User score calculated successfully", score));
-  }
+        String userId = userClientService.getUserIdByClientId(staffId, quarter, year).getUserId();
 
-  @GetMapping("/participation/{quizSurveyId}")
-  public ResponseEntity<ApiResponseDTO<List<ParticipationStatusDTO>>> getParticipationStatus(
-      @PathVariable String quizSurveyId) {
+        UserSingleScoreDTO score = userScoreService.calculateUserScore(userId);
 
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(
-            true,
-            "Participation status fetched successfully",
-            participationService.getParticipationStatus(quizSurveyId)));
-  }
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "User score calculated successfully", score)
+        );
+    }
 
-  @GetMapping("/participation/overall")
-  public ResponseEntity<ApiResponseDTO<List<OverallParticipationDTO>>> getOverallParticipation() {
-    return ResponseEntity.ok(
-        new ApiResponseDTO<>(
-            true,
-            "Overall quiz & survey participation fetched",
-            overallParticipationService.getOverallParticipation()));
-  }
+    @GetMapping("/participation/{quizSurveyId}")
+    public ResponseEntity<ApiResponseDTO<List<ParticipationStatusDTO>>> getParticipationStatus(
+            @PathVariable String quizSurveyId) {
 
-  @GetMapping("/participation/{quizSurveyId}/excel")
-  public ResponseEntity<InputStreamResource> downloadParticipationExcel(
-      @PathVariable String quizSurveyId) throws Exception {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(
+                        true,
+                        "Participation status fetched successfully",
+                        participationService.getParticipationStatus(quizSurveyId)));
+    }
 
-    QuizSurveyModel quizSurvey = quizSurveyService.getById(quizSurveyId);
+    @GetMapping("/participation/overall")
+    public ResponseEntity<ApiResponseDTO<List<OverallParticipationDTO>>> getOverallParticipation() {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(
+                        true,
+                        "Overall quiz & survey participation fetched",
+                        overallParticipationService.getOverallParticipation()));
+    }
 
-    String safeTitle = quizSurvey.getTitle().replaceAll("[^a-zA-Z0-9_-]", "-");
+    @GetMapping("/participation/{quizSurveyId}/excel")
+    public ResponseEntity<InputStreamResource> downloadParticipationExcel(
+            @PathVariable String quizSurveyId) throws Exception {
 
-    String filename = "Per-" + safeTitle + "-report.xlsx";
+        QuizSurveyModel quizSurvey = quizSurveyService.getById(quizSurveyId);
 
-    ByteArrayInputStream stream = participationExcelService.generateByQuizSurvey(quizSurveyId);
+        String safeTitle = quizSurvey.getTitle().replaceAll("[^a-zA-Z0-9_-]", "-");
 
-    return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-        .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
-        .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
-        .header(HttpHeaders.PRAGMA, "no-cache")
-        .header(HttpHeaders.EXPIRES, "0")
-        .contentType(
-            MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-        .body(new InputStreamResource(stream));
-  }
+        String filename = "Per-" + safeTitle + "-report.xlsx";
 
-  @GetMapping("/participation/overall/excel")
-  public ResponseEntity<InputStreamResource> downloadOverallExcel() throws Exception {
+        ByteArrayInputStream stream = participationExcelService.generateByQuizSurvey(quizSurveyId);
 
-    String filename = "Overall-Quiz-Survey-Report.xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header(HttpHeaders.EXPIRES, "0")
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(stream));
+    }
 
-    ByteArrayInputStream stream = participationExcelService.generateOverall();
+    @GetMapping("/participation/overall/excel")
+    public ResponseEntity<InputStreamResource> downloadOverallExcel() throws Exception {
 
-    return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-        .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
-        .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
-        .header(HttpHeaders.PRAGMA, "no-cache")
-        .header(HttpHeaders.EXPIRES, "0")
-        .contentType(
-            MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-        .body(new InputStreamResource(stream));
-  }
+        String filename = "Overall-Quiz-Survey-Report.xlsx";
+
+        ByteArrayInputStream stream = participationExcelService.generateOverall();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header(HttpHeaders.EXPIRES, "0")
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(stream));
+    }
 }

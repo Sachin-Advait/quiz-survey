@@ -71,7 +71,6 @@ public class UserService {
         if (user.getActiveUser() == null) {
             user.setActiveUser(true);
         }
-        
         return userRepository.save(user);
     }
 
@@ -90,7 +89,7 @@ public class UserService {
             } else if (outlet != null) {
                 pagedUsers = userRepository.findByOutletAndActiveUserTrue(outlet, pageable);
             } else {
-                pagedUsers = userRepository.findAll(pageable);
+                pagedUsers = userRepository.findByActiveUserTrue(pageable);
             }
             users = pagedUsers.getContent();
         } else {
@@ -101,7 +100,7 @@ public class UserService {
             } else if (outlet != null) {
                 users = userRepository.findByOutletAndActiveUserTrue(outlet);
             } else {
-                users = userRepository.findAll();
+                users = userRepository.findByActiveUserTrue();
             }
         }
 

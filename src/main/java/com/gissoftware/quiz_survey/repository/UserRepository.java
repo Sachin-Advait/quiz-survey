@@ -33,4 +33,10 @@ public interface UserRepository extends MongoRepository<UserModel, String> {
     // 🗺️ Distinct regions from active users only
     @Query(value = "{ 'activeUser': true }", fields = "{ 'region' : 1 }")
     List<UserModel> findAllRegionsOfActiveUsers();
+
+    Page<UserModel> findByActiveUserTrue(Pageable pageable);
+
+    List<UserModel> findByActiveUserTrue();
+
+    Optional<UserModel> findByStaffIdAndQuarterAndYear(String staffId, String quarter, Integer year);
 }
