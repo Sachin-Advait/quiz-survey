@@ -38,39 +38,31 @@ public class UserService {
     }
 
     public UserModel syncUser(UserModel user) {
-        Optional<UserModel> userModel = userRepository.findByStaffIdAndActiveUserTrue(user.getStaffId());
-        Optional<UserModel> inactiveUser = userRepository.findByStaffId(user.getStaffId());
 
-        if (userModel.isPresent()) {
-            userModel.get().setFcmToken(user.getFcmToken());
-            userRepository.save(userModel.get());
-            return userModel.get();
-        } else if (inactiveUser.isPresent()) {
-            inactiveUser.get().setFcmToken(user.getFcmToken());
-            userRepository.save(inactiveUser.get());
-            return inactiveUser.get();
+        Optional<UserModel> existingUser = userRepository.findByStaffIdAndActiveUserTrue(user.getStaffId());
+
+        if (existingUser.isEmpty()) {
+            existingUser = userRepository.findFirstByStaffIdOrderByYearDescQuarterDesc(user.getStaffId());
         }
 
+        if (existingUser.isPresent()) {
+            UserModel dbUser = existingUser.get();
+            dbUser.setFcmToken(user.getFcmToken());
+            return userRepository.save(dbUser);
+        }
+
+        // ---- Create New User ----
         LocalDate now = LocalDate.now();
-        int month = now.getMonthValue();
-        int quarterNum = (month - 1) / 3 + 1;
+        int quarterNum = (now.getMonthValue() - 1) / 3 + 1;
 
-        if (user.getQuarter() == null) {
-            user.setQuarter("Q" + quarterNum);
-        }
+        user.setQuarter(user.getQuarter() != null ? user.getQuarter() : "Q" + quarterNum);
 
-        if (user.getYear() == null) {
-            user.setYear(now.getYear());
-        }
+        user.setYear(user.getYear() != null ? user.getYear() : now.getYear());
 
-        // ✅ Defaults
-        if (user.getRole() == null) {
-            user.setRole(UserRole.USER);
-        }
+        user.setRole(user.getRole() != null ? user.getRole() : UserRole.USER);
 
-        if (user.getActiveUser() == null) {
-            user.setActiveUser(true);
-        }
+        user.setActiveUser(user.getActiveUser() != null ? user.getActiveUser() : true);
+
         return userRepository.save(user);
     }
 

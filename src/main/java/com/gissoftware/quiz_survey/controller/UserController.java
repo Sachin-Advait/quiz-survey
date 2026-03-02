@@ -65,13 +65,18 @@ public class UserController {
     }
 
     @GetMapping("/user-id/by-client/{staffId}")
-    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> getUserIdByClientId(@PathVariable String staffId) {
+    public ResponseEntity<ApiResponseDTO<UserResponseDTO>> getUserIdByClientId(
+            @PathVariable String staffId) {
 
-        UserModel user = userRepository.findByStaffId(staffId).orElseThrow(() -> new ResponseStatusException(
-                HttpStatus.NOT_FOUND, "User not found for staffId: " + staffId
-        ));
+        UserModel user = userRepository.findByStaffIdAndActiveUserTrue(staffId)
+                .or(() -> userRepository.findFirstByStaffIdOrderByYearDescQuarterDesc(staffId))
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "User not found for staffId: " + staffId
+                ));
 
         return ResponseEntity.ok(
-                new ApiResponseDTO<>(true, "User id fetched successfully", userService.toDto(user)));
+                new ApiResponseDTO<>(true, "User id fetched successfully", userService.toDto(user))
+        );
     }
 }

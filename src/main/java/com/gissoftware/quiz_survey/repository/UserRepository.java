@@ -14,7 +14,7 @@ public interface UserRepository extends MongoRepository<UserModel, String> {
     // 🔎 Find active user by staffId
     Optional<UserModel> findByStaffIdAndActiveUserTrue(String staffId);
 
-    Optional<UserModel> findByStaffId(String staffId);
+    Optional<UserModel> findFirstByStaffIdOrderByYearDescQuarterDesc(String staffId);
 
     // 📄 Paging queries (active users only)
     Page<UserModel> findByRegionAndOutletAndActiveUserTrue(String region, String outlet, Pageable pageable);
