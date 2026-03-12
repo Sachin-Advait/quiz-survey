@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,4 +17,5 @@ public class UserSingleScoreDTO {
   private double satisfactionScore; // 0–100
 
   private double finalScore; // weighted final score
+  private List<QuizDataDTO> quizData;
 }
