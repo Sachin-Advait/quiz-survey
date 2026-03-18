@@ -2,6 +2,8 @@ package com.gissoftware.quiz_survey.config;
 
 import com.gissoftware.quiz_survey.logging.RequestResponseLoggingFilter;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,7 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableScheduling
 public class SecurityConfig {
 
-  //  @Autowired private KongAuthFilter kongAuthFilter;
+  @Autowired private KongAuthFilter kongAuthFilter;
 
   // Register filters as Spring Beans
   @Bean
@@ -37,6 +39,13 @@ public class SecurityConfig {
   @Bean
   public HostValidationFilter hostValidationFilter() {
     return new HostValidationFilter();
+  }
+
+  @Bean
+  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter filter) {
+    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
+    registration.setEnabled(false); // ✅ stops auto-registration
+    return registration;
   }
 
   @Bean
@@ -57,11 +66,10 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/user/ws/**")
                     .permitAll()
-                    // TODO: REVERT TO .authenticated() WHEN KONG IS ENABLED IN PROD ⚠️
                     .requestMatchers("/api/user/**")
-                    .permitAll()
+                    .authenticated()
                     .requestMatchers("/api/admin/**")
-                    .permitAll()
+                    .authenticated()
                     .anyRequest()
                     .denyAll())
 
@@ -69,7 +77,7 @@ public class SecurityConfig {
         .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
         .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
         .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        //        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 
