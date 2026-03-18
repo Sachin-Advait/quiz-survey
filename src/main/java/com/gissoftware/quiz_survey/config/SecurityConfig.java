@@ -2,7 +2,6 @@ package com.gissoftware.quiz_survey.config;
 
 import com.gissoftware.quiz_survey.logging.RequestResponseLoggingFilter;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,7 +21,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableScheduling
 public class SecurityConfig {
 
-  @Autowired private KongAuthFilter kongAuthFilter;
+  //  @Autowired private KongAuthFilter kongAuthFilter;
 
   // Register filters as Spring Beans
   @Bean
@@ -58,10 +57,11 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/user/ws/**")
                     .permitAll()
+                    // TODO: REVERT TO .authenticated() WHEN KONG IS ENABLED IN PROD ⚠️
                     .requestMatchers("/api/user/**")
-                    .authenticated()
+                    .permitAll()
                     .requestMatchers("/api/admin/**")
-                    .authenticated()
+                    .permitAll()
                     .anyRequest()
                     .denyAll())
 
@@ -69,7 +69,7 @@ public class SecurityConfig {
         .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
         .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
         .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+        //        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 

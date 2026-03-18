@@ -23,27 +23,33 @@ public class RefererValidationFilter implements Filter {
       throws IOException, ServletException {
 
     HttpServletRequest req = (HttpServletRequest) request;
-    String referer = req.getHeader("Referer");
+    String uri = req.getRequestURI();
 
-    if (req.getRequestURI().startsWith("/api/user/ws")) {
+    if (uri.startsWith("/api/user/ws")) {
       chain.doFilter(request, response);
       return;
     }
 
+    String referer = req.getHeader("Referer");
     boolean allowed = false;
 
     if (referer != null) {
-      // check hardcoded allowed referers
       allowed = ALLOWED_REFERERS.stream().anyMatch(referer::startsWith);
-
-      // check any URL starting with the omantelsip prefix
       if (!allowed && referer.startsWith(ALLOW_OMANTEL_PREFIX)) {
         allowed = true;
       }
     }
 
     if (!allowed) {
-      ((HttpServletResponse) response).sendError(403, "Invalid Referer header");
+      String reason =
+          referer == null ? "Missing Referer header" : "Invalid Referer header: " + referer;
+
+      System.err.println("[RefererValidationFilter] BLOCKED - " + reason + " | URI: " + uri);
+
+      HttpServletResponse res = (HttpServletResponse) response;
+      res.setStatus(403);
+      res.setContentType("application/json");
+      res.getWriter().write("{\"error\": \"403 Forbidden\", \"reason\": \"" + reason + "\"}");
       return;
     }
 

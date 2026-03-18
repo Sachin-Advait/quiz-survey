@@ -19,18 +19,26 @@ public class HostValidationFilter implements Filter {
           "quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om",
           "omantelsip.omantel.om");
 
-    @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
+  @Override
+  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+      throws IOException, ServletException {
 
-        HttpServletRequest req = (HttpServletRequest) request;
-        String host = req.getHeader("Host");
+    HttpServletRequest req = (HttpServletRequest) request;
+    String host = req.getHeader("Host");
+    String uri = req.getRequestURI();
 
-        if (host != null && !ALLOWED_HOSTS.contains(host)) {
-            ((HttpServletResponse) response).sendError(400, "Invalid Host header");
-            return;
-        }
+    if (host != null && !ALLOWED_HOSTS.contains(host)) {
+      String reason = "Invalid Host header: " + host;
 
-        chain.doFilter(request, response);
+      System.err.println("[HostValidationFilter] BLOCKED - " + reason + " | URI: " + uri);
+
+      HttpServletResponse res = (HttpServletResponse) response;
+      res.setStatus(400);
+      res.setContentType("application/json");
+      res.getWriter().write("{\"error\": \"400 Bad Request\", \"reason\": \"" + reason + "\"}");
+      return;
     }
+
+    chain.doFilter(request, response);
+  }
 }
