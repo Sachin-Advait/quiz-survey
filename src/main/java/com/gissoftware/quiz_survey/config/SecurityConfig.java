@@ -56,11 +56,11 @@ public class SecurityConfig {
             auth ->
                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                     .permitAll()
+                    .requestMatchers("/api/user/ws/**")
+                    .permitAll()
                     .requestMatchers("/api/user/**")
                     .authenticated()
                     .requestMatchers("/api/admin/**")
-                    .authenticated()
-                    .requestMatchers("/api/user/ws/**")
                     .authenticated()
                     .anyRequest()
                     .denyAll())
