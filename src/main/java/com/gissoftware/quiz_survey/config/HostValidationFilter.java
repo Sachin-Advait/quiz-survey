@@ -3,42 +3,50 @@ package com.gissoftware.quiz_survey.config;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
 import java.io.IOException;
 import java.util.List;
 
 public class HostValidationFilter implements Filter {
 
-  private static final List<String> ALLOWED_HOSTS =
-      List.of(
-          "localhost:3000",
-          "localhost:8082",
-          "localhost:8443",
-          "quiz-survey.onrender.com",
-          "185.177.116.176",
-          "omandigitalservices.online",
-          "quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om",
-          "omantelsip.omantel.om");
+    private static final List<String> ALLOWED_HOSTS =
+            List.of(
+                    "localhost:3000",
+                    "localhost:8082",
+                    "localhost:8443",
+                    "quiz-survey.onrender.com",
+                    "185.177.116.176",
+                    "omandigitalservices.online",
+                    "quiz-backend-route-omantel-sip.apps.ocpprod01.otg.om",
+                    "omantelsip.omantel.om");
 
-  @Override
-  public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-      throws IOException, ServletException {
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
 
-    HttpServletRequest req = (HttpServletRequest) request;
-    String host = req.getHeader("Host");
-    String uri = req.getRequestURI();
+        HttpServletRequest req = (HttpServletRequest) request;
+        String uri = req.getRequestURI();
 
-    if (host != null && !ALLOWED_HOSTS.contains(host)) {
-      String reason = "Invalid Host header: " + host;
+        // ✅ ALWAYS allow WebSocket (CRITICAL)
+        if (uri.startsWith("/api/user/ws")) {
+            chain.doFilter(request, response);
+            return;
+        }
 
-      System.err.println("[HostValidationFilter] BLOCKED - " + reason + " | URI: " + uri);
+        String host = req.getHeader("Host");
 
-      HttpServletResponse res = (HttpServletResponse) response;
-      res.setStatus(400);
-      res.setContentType("application/json");
-      res.getWriter().write("{\"error\": \"400 Bad Request\", \"reason\": \"" + reason + "\"}");
-      return;
+        if (host != null && !ALLOWED_HOSTS.contains(host)) {
+            String reason = "Invalid Host header: " + host;
+
+            System.err.println("[HostValidationFilter] BLOCKED - " + reason + " | URI: " + uri);
+
+            HttpServletResponse res = (HttpServletResponse) response;
+            res.setStatus(400);
+            res.setContentType("application/json");
+            res.getWriter().write("{\"error\": \"400 Bad Request\", \"reason\": \"" + reason + "\"}");
+            return;
+        }
+
+        chain.doFilter(request, response);
     }
-
-    chain.doFilter(request, response);
-  }
 }
