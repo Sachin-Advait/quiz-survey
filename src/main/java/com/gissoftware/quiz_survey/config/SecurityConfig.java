@@ -2,8 +2,6 @@ package com.gissoftware.quiz_survey.config;
 
 import com.gissoftware.quiz_survey.logging.RequestResponseLoggingFilter;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,7 +11,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -23,30 +20,30 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableScheduling
 public class SecurityConfig {
 
-  @Autowired private KongAuthFilter kongAuthFilter;
+//  @Autowired private KongAuthFilter kongAuthFilter;
 
   // Register filters as Spring Beans
-  @Bean
-  public SecurityHeadersFilter securityHeadersFilter() {
-    return new SecurityHeadersFilter();
-  }
+//  @Bean
+//  public SecurityHeadersFilter securityHeadersFilter() {
+//    return new SecurityHeadersFilter();
+//  }
 
-  @Bean
-  public RefererValidationFilter refererValidationFilter() {
-    return new RefererValidationFilter();
-  }
+//  @Bean
+//  public RefererValidationFilter refererValidationFilter() {
+//    return new RefererValidationFilter();
+//  }
 
-  @Bean
-  public HostValidationFilter hostValidationFilter() {
-    return new HostValidationFilter();
-  }
+//  @Bean
+//  public HostValidationFilter hostValidationFilter() {
+//    return new HostValidationFilter();
+//  }
 
-  @Bean
-  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter filter) {
-    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
-    registration.setEnabled(false); // ✅ stops auto-registration
-    return registration;
-  }
+//  @Bean
+//  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter filter) {
+//    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
+//    registration.setEnabled(false); // ✅ stops auto-registration
+//    return registration;
+//  }
 
   @Bean
   public SecurityFilterChain filterChain(
@@ -67,17 +64,17 @@ public class SecurityConfig {
                     .requestMatchers("/api/user/ws/**")
                     .permitAll()
                     .requestMatchers("/api/user/**")
-                    .authenticated()
+                    .permitAll()
                     .requestMatchers("/api/admin/**")
-                    .authenticated()
+                    .permitAll()
                     .anyRequest()
                     .denyAll())
 
         //         Apply filters in correct order with BEAN INSTANCES
-        .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
-        .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
-        .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+//        .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
+//        .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
+//        .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
+//        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 
