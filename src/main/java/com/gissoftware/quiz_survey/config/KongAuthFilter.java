@@ -5,69 +5,72 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-//@Component
+import java.io.IOException;
+import java.util.List;
+
+@Component
 public class KongAuthFilter extends OncePerRequestFilter {
 
-  @Autowired Dotenv dotenv;
+    @Autowired
+    Dotenv dotenv;
 
-  @Override
-  protected boolean shouldNotFilter(HttpServletRequest request) {
-    return request.getRequestURI().startsWith("/api/user/ws");
-  }
-
-  @Override
-  protected void doFilterInternal(
-      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-      throws ServletException, IOException {
-
-    String kongInternalSecret = dotenv.get("KONG_SECRET");
-
-    String kongSecret = request.getHeader("X-Kong-Authorization");
-    String userId = request.getHeader("X-User-Id");
-    String role = request.getHeader("X-User-Role");
-
-    System.out.println("===== Incoming Request Headers =====");
-    request
-        .getHeaderNames()
-        .asIterator()
-        .forEachRemaining(
-            name -> {
-              System.out.println(name + " = " + request.getHeader(name));
-            });
-    System.out.println("====================================");
-
-    System.out.println("X-Kong-Authorization = " + request.getHeader("X-Kong-Authorization"));
-    System.out.println("X-User-Id            = " + request.getHeader("X-User-Id"));
-    System.out.println("X-User-Role          = " + request.getHeader("X-User-Role"));
-    System.out.println("Internal SECRET          = " + kongInternalSecret);
-
-    // Verify request really came from Kong
-    if (kongSecret == null || !kongSecret.equals(kongInternalSecret)) {
-      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-      response.getWriter().write("Unauthorized: Request did not come through Kong");
-      return;
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return request.getRequestURI().startsWith("/api/user/ws");
     }
 
-    // Verify Kong passed user info
-    if (userId == null || role == null) {
-      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-      response.getWriter().write("Unauthorized: Missing Auth Headers");
-      return;
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
+
+        String kongInternalSecret = dotenv.get("KONG_SECRET");
+
+        String kongSecret = request.getHeader("X-Kong-Authorization");
+        String userId = request.getHeader("X-User-Id");
+        String role = request.getHeader("X-User-Role");
+
+        System.out.println("===== Incoming Request Headers =====");
+        request
+                .getHeaderNames()
+                .asIterator()
+                .forEachRemaining(
+                        name -> {
+                            System.out.println(name + " = " + request.getHeader(name));
+                        });
+        System.out.println("====================================");
+
+        System.out.println("X-Kong-Authorization = " + request.getHeader("X-Kong-Authorization"));
+        System.out.println("X-User-Id            = " + request.getHeader("X-User-Id"));
+        System.out.println("X-User-Role          = " + request.getHeader("X-User-Role"));
+        System.out.println("Internal SECRET          = " + kongInternalSecret);
+
+        // Verify request really came from Kong
+        if (kongSecret == null || !kongSecret.equals(kongInternalSecret)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Unauthorized: Request did not come through Kong");
+            return;
+        }
+
+        // Verify Kong passed user info
+        if (userId == null || role == null) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("Unauthorized: Missing Auth Headers");
+            return;
+        }
+
+        UsernamePasswordAuthenticationToken auth =
+                new UsernamePasswordAuthenticationToken(
+                        userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+
+        SecurityContextHolder.getContext().setAuthentication(auth);
+        filterChain.doFilter(request, response);
     }
-
-    UsernamePasswordAuthenticationToken auth =
-        new UsernamePasswordAuthenticationToken(
-            userId, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-
-    SecurityContextHolder.getContext().setAuthentication(auth);
-    filterChain.doFilter(request, response);
-  }
 }
