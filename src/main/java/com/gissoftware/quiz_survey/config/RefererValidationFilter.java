@@ -26,7 +26,7 @@ public class RefererValidationFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         String uri = req.getRequestURI();
 
-        if (uri.startsWith("/api/user/ws") || uri.startsWith("/api/user/sse")) {
+        if (uri.contains("/sse") || uri.contains("/ws")) {
             chain.doFilter(request, response);
             return;
         }
