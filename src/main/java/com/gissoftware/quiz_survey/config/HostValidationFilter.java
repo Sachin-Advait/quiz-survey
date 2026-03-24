@@ -28,7 +28,7 @@ public class HostValidationFilter implements Filter {
         String uri = req.getRequestURI();
 
         // ✅ ALWAYS allow WebSocket (CRITICAL)
-        if (uri.startsWith("/api/user/ws")) {
+        if (uri.startsWith("/api/user/ws") || uri.startsWith("/api/user/sse")) {
             chain.doFilter(request, response);
             return;
         }
