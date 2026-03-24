@@ -83,6 +83,7 @@ public class QuizSurveySseController {
 
         // ✅ Register callbacks BEFORE adding to map and BEFORE send
         Runnable cleanup = () -> {
+            if (!emitters.contains(emitter)) return;
             emitters.remove(emitter);
             totalConnections.decrementAndGet();
             if (emitters.isEmpty()) {
