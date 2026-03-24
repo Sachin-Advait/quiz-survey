@@ -66,6 +66,8 @@ public class SecurityConfig {
                         auth ->
                                 auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                                         .permitAll()
+                                        .requestMatchers("/api/user/sse/**")
+                                        .permitAll()
                                         .requestMatchers("/api/user/ws/**")
                                         .permitAll()
                                         .requestMatchers("/api/user/**")
