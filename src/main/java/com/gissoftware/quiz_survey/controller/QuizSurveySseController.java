@@ -1,6 +1,9 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.PushQuizSurveyMessage;
+import com.gissoftware.quiz_survey.model.OfferModel;
+import com.gissoftware.quiz_survey.model.QuizSurveyModel;
+import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -124,27 +127,33 @@ public class QuizSurveySseController {
         return emitter;
     }
 
-    public void pushNewSurvey(String surveyId, Boolean isMandatory, List<String> targetedUsers) {
-        log.info("Pushing survey. isMandatory: {}", isMandatory);
+    public void pushNewSurvey(QuizSurveyModel quizSurvey) {
+        log.info("Pushing survey. isMandatory: {}", quizSurvey.getIsMandatory());
 
-        if (Boolean.FALSE.equals(isMandatory)) return;
+        if (Boolean.FALSE.equals(quizSurvey.getIsMandatory())) return;
 
-        if (targetedUsers == null || targetedUsers.isEmpty()) {
+        if (quizSurvey.getTargetedUsers() == null || quizSurvey.getTargetedUsers().isEmpty()) {
             log.warn("No targeted users. Skipping push.");
             return;
         }
 
         log.info("Connected users: {}", userEmitters.keySet());
-        log.info("Target users: {}", targetedUsers);
+        log.info("Target users: {}", quizSurvey.getTargetedUsers());
 
-        PushQuizSurveyMessage message = new PushQuizSurveyMessage(surveyId, isMandatory, targetedUsers);
-        String eventId = surveyId + "-" + System.currentTimeMillis();
+        PushQuizSurveyMessage message = new PushQuizSurveyMessage(
+                quizSurvey.getId(),
+                quizSurvey.getIsMandatory(),
+                quizSurvey.getTargetedUsers(),
+                quizSurvey
+        );
 
-        for (String userId : targetedUsers) {
+        String eventId = quizSurvey.getId() + "-" + System.currentTimeMillis();
+
+        for (String userId : quizSurvey.getTargetedUsers()) {
             CopyOnWriteArrayList<SseEmitter> emitters = userEmitters.get(userId);
 
             if (emitters == null || emitters.isEmpty()) {
-                log.warn("No active SSE connection for user {}. Skipping push.", userId);
+                log.warn("No active SSE connection for user in Quiz {}. Skipping push.", userId);
                 continue;
             }
 
@@ -155,9 +164,83 @@ public class QuizSurveySseController {
                             .name("quiz-survey")
                             .data(message)
                             .reconnectTime(3000));
-                    log.info("✅ Pushed survey {} to user {}", surveyId, userId);
+                    log.info("✅ Pushed survey {} to user {}", quizSurvey.getId(), userId);
                 } catch (IOException e) {
-                    log.warn("❌ Failed to push to user {}: {}", userId, e.getMessage());
+                    log.warn("❌ Failed to push to quiz user {}: {}", userId, e.getMessage());
+                    emitters.remove(emitter);
+                    totalConnections.decrementAndGet();
+                }
+            }
+        }
+    }
+
+    public void pushNewOffer(OfferModel offer) {
+        log.info("Pushing offer isMandatory: {}", offer.getIsMandatory());
+
+        if (Boolean.FALSE.equals(offer.getIsMandatory())) return;
+
+        if (offer.getTargetUsers() == null || offer.getTargetUsers().isEmpty()) {
+            log.warn("No targeted users in offer. Skipping push.");
+            return;
+        }
+
+        String eventId = offer.getId() + "-" + System.currentTimeMillis();
+
+        for (String userId : offer.getTargetUsers()) {
+            CopyOnWriteArrayList<SseEmitter> emitters = userEmitters.get(userId);
+
+            if (emitters == null || emitters.isEmpty()) {
+                log.warn("No active SSE connection for user in offer {}. Skipping push.", userId);
+                continue;
+            }
+
+            for (SseEmitter emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .id(eventId)
+                            .name("offer")
+                            .data(offer)
+                            .reconnectTime(3000));
+                    log.info("✅ Pushed offer {} to user {}", offer.getId(), userId);
+                } catch (IOException e) {
+                    log.warn("❌ Failed to push to offer user {}: {}", userId, e.getMessage());
+                    emitters.remove(emitter);
+                    totalConnections.decrementAndGet();
+                }
+            }
+        }
+    }
+
+    public void pushNewTraining(TrainingMaterial training, List<String> userIds) {
+//        log.info("Pushing training isMandatory: {}", training.getIsMandatory());
+
+//        if (Boolean.FALSE.equals(training.getIsMandatory())) return;
+
+        if (userIds == null || userIds.isEmpty()) {
+            log.warn("No targeted users in training. Skipping push.");
+            return;
+        }
+
+        String eventId = training.getId() + "-" + System.currentTimeMillis();
+
+        for (String userId : userIds) {
+            CopyOnWriteArrayList<SseEmitter> emitters = userEmitters.get(userId);
+
+            if (emitters == null || emitters.isEmpty()) {
+                log.warn("No active SSE connection for user in training {}. Skipping push.", userId);
+                continue;
+            }
+
+            for (SseEmitter emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .id(eventId)
+                            .name("training")
+                            .data(training)
+                            .reconnectTime(3000));
+                    log.info("✅ Pushed training {} to user {}", training.getId(), userId);
+                } catch (IOException e) {
+                    log.warn("❌ Failed to push to training user {}: {}", userId, e.getMessage());
                     emitters.remove(emitter);
                     totalConnections.decrementAndGet();
                 }

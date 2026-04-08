@@ -223,7 +223,7 @@ public class QuizSurveyService {
 
         model.setIsAnnounced(model.getAnnouncementMode() == AnnouncementMode.IMMEDIATE);
         QuizSurveyModel savedQuiz = quizSurveyRepo.save(model);
-        quizSurveySseController.pushNewSurvey(savedQuiz.getId(), savedQuiz.getIsMandatory(), savedQuiz.getTargetedUsers());
+        quizSurveySseController.pushNewSurvey(savedQuiz);
 
         fcmService.notifyQuizSurveyAssigned(savedQuiz);
         return savedQuiz;
