@@ -1,6 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.OfferResponseDTO;
 import com.gissoftware.quiz_survey.model.OfferModel;
 import com.gissoftware.quiz_survey.service.OfferService;
 import com.gissoftware.quiz_survey.service.OfferViewService;
@@ -126,9 +127,11 @@ public class OfferController {
 
   // 👤 USER
   @GetMapping("/user/{userId}")
-  public ResponseEntity<ApiResponseDTO<List<OfferModel>>> getOffersForUser(
+  public ResponseEntity<ApiResponseDTO<List<OfferResponseDTO>>> getOffersForUser(
       @PathVariable String userId) {
-    List<OfferModel> offers = offerService.getOffersForUser(userId);
+
+    List<OfferResponseDTO> offers = offerService.getOffersForUser(userId);
+
     return ResponseEntity.ok(
         new ApiResponseDTO<>(true, "User offers fetched successfully", offers));
   }

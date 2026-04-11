@@ -162,9 +162,14 @@ public class QuizSurveySseController {
         try {
           Map<String, Object> payload =
               Map.of(
-                  "type", "SURVEY",
-                  "id", quizSurvey.getId(),
-                  "isMandatory", quizSurvey.getIsMandatory());
+                  "type",
+                  "SURVEY",
+                  "id",
+                  quizSurvey.getId(),
+                  "data",
+                  quizSurvey,
+                  "isMandatory",
+                  quizSurvey.getIsMandatory());
 
           emitter.send(
               SseEmitter.event().id(eventId).name("mandatory").data(payload).reconnectTime(3000));
@@ -201,9 +206,14 @@ public class QuizSurveySseController {
         try {
           Map<String, Object> payload =
               Map.of(
-                  "type", "OFFER",
-                  "id", offer.getId(),
-                  "isMandatory", offer.getIsMandatory());
+                  "type",
+                  "OFFER",
+                  "id",
+                  offer.getId(),
+                  "data",
+                  offer,
+                  "isMandatory",
+                  offer.getIsMandatory());
 
           emitter.send(
               SseEmitter.event().id(eventId).name("mandatory").data(payload).reconnectTime(3000));
@@ -240,9 +250,14 @@ public class QuizSurveySseController {
         try {
           Map<String, Object> payload =
               Map.of(
-                  "type", "TRAINING",
-                  "id", training.getId(),
-                  "isMandatory", training.getIsMandatory());
+                  "type",
+                  "TRAINING",
+                  "id",
+                  training.getId(),
+                  "data",
+                  training,
+                  "isMandatory",
+                  training.getIsMandatory());
 
           emitter.send(
               SseEmitter.event().id(eventId).name("mandatory").data(payload).reconnectTime(3000));
