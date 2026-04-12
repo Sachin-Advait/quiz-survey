@@ -34,4 +34,5 @@ public class TrainingEditDTO {
   private Instant uploadDate;
 
   private List<String> assignedUserIds;
+  private Boolean isMandatory;
 }

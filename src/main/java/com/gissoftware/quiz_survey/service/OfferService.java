@@ -48,6 +48,8 @@ public class OfferService {
     if (updatedOffer.getStatus() != null) existing.setStatus(updatedOffer.getStatus());
     if (updatedOffer.getValidUntil() != null) existing.setValidUntil(updatedOffer.getValidUntil());
     if (updatedOffer.getImageUrl() != null) existing.setImageUrl(updatedOffer.getImageUrl());
+    if (updatedOffer.getIsMandatory() != null)
+      existing.setIsMandatory(updatedOffer.getIsMandatory());
 
     if (updatedOffer.getTargetUsers() != null) {
       existing.setTargetUsers(
@@ -79,42 +81,44 @@ public class OfferService {
     return offerRepository.findById(id).orElseThrow(() -> new RuntimeException("Offer not found"));
   }
 
-    public List<OfferResponseDTO> getOffersForUser(String userId) {
-        List<OfferModel> offers = offerRepository.findAll().stream()
-                .filter(offer ->
-                        "active".equalsIgnoreCase(offer.getStatus())
-                                && offer.getTargetUsers() != null
-                                && (offer.getTargetUsers().contains("ALL")
-                                || offer.getTargetUsers().contains(userId)))
-                .toList();
+  public List<OfferResponseDTO> getOffersForUser(String userId) {
+    List<OfferModel> offers =
+        offerRepository.findAll().stream()
+            .filter(
+                offer ->
+                    "active".equalsIgnoreCase(offer.getStatus())
+                        && offer.getTargetUsers() != null
+                        && (offer.getTargetUsers().contains("ALL")
+                            || offer.getTargetUsers().contains(userId)))
+            .toList();
 
-        return offers.stream().map(offer -> {
+    return offers.stream()
+        .map(
+            offer -> {
+              boolean isViewed =
+                  offerViewRepository.findByOfferIdAndUserId(offer.getId(), userId).isPresent();
 
-            boolean isViewed = offerViewRepository
-                    .findByOfferIdAndUserId(offer.getId(), userId)
-                    .isPresent();
+              return OfferResponseDTO.builder()
+                  .id(offer.getId())
+                  .type(offer.getType())
+                  .title(offer.getTitle())
+                  .description(offer.getDescription())
+                  .category(offer.getCategory())
+                  .tags(offer.getTags())
+                  .priority(offer.getPriority())
+                  .discount(offer.getDiscount())
+                  .region(offer.getRegion())
+                  .targetUsers(offer.getTargetUsers())
+                  .isMandatory(offer.getIsMandatory())
+                  .status(offer.getStatus())
+                  .validUntil(offer.getValidUntil())
+                  .imageUrl(offer.getImageUrl())
+                  .createdAt(offer.getCreatedAt())
 
-            return OfferResponseDTO.builder()
-                    .id(offer.getId())
-                    .type(offer.getType())
-                    .title(offer.getTitle())
-                    .description(offer.getDescription())
-                    .category(offer.getCategory())
-                    .tags(offer.getTags())
-                    .priority(offer.getPriority())
-                    .discount(offer.getDiscount())
-                    .region(offer.getRegion())
-                    .targetUsers(offer.getTargetUsers())
-                    .isMandatory(offer.getIsMandatory())
-                    .status(offer.getStatus())
-                    .validUntil(offer.getValidUntil())
-                    .imageUrl(offer.getImageUrl())
-                    .createdAt(offer.getCreatedAt())
-
-                    // 🔥 IMPORTANT
-                    .isViewed(isViewed)
-
-                    .build();
-        }).toList();
-    }
+                  // 🔥 IMPORTANT
+                  .isViewed(isViewed)
+                  .build();
+            })
+        .toList();
+  }
 }

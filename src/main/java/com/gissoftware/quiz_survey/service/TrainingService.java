@@ -274,6 +274,9 @@ public class TrainingService {
 
       if (request.getMaterial().getDuration() != null)
         material.setDuration(request.getMaterial().getDuration());
+      if (request.getMaterial().getIsMandatory() != null) {
+        material.setIsMandatory(request.getMaterial().getIsMandatory());
+      }
 
       // ✅ ADD THIS
       if (request.getMaterial().getDurationSeconds() != null)

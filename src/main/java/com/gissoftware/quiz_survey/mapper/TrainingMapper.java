@@ -31,6 +31,7 @@ public class TrainingMapper {
         .active(material.getActive())
         .uploadDate(material.getUploadDate())
         .assignedUserIds(assignments.stream().map(TrainingAssignment::getUserId).toList())
+        .isMandatory(material.getIsMandatory())
         .build();
   }
 }
