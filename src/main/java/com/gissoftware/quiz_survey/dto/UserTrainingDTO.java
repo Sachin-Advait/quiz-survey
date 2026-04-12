@@ -25,4 +25,5 @@ public class UserTrainingDTO {
   private int progress;
   private String status;
   private Instant dueDate;
+  private Boolean isMandatory;
 }

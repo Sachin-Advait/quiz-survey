@@ -203,7 +203,8 @@ public class TrainingService {
                   material.getDocumentUrl(),
                   assignment.getProgress(),
                   assignment.getStatus(),
-                  assignment.getDueDate());
+                  assignment.getDueDate(),
+                  material.getIsMandatory());
             })
         .filter(Objects::nonNull)
         .toList();
