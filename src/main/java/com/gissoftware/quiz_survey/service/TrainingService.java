@@ -312,12 +312,29 @@ public class TrainingService {
       material.setDuration(null);
     }
 
-    materialRepo.save(material);
+      if (m.getDuration() != null) {
+        material.setDuration(m.getDuration());
+      }
+
+      // Cloudinary update ONLY if URL is sent
+      if (m.getCloudinaryUrl() != null) {
+        material.setCloudinaryUrl(m.getCloudinaryUrl());
+        material.setCloudinaryPublicId(m.getCloudinaryPublicId());
+        material.setCloudinaryResourceType(m.getCloudinaryResourceType());
+        material.setCloudinaryFormat(m.getCloudinaryFormat());
+      }
+
+      materialRepo.save(material);
+    }
 
     /* ---------- ASSIGNMENT UPDATE ---------- */
 
-    List<String> newUserIds = request.getUserIds() != null ? request.getUserIds() : List.of();
+    // 🚨 If userIds not sent → do NOTHING
+    if (request.getUserIds() == null) {
+      return material;
+    }
 
+    List<String> newUserIds = request.getUserIds();
     List<TrainingAssignment> existingAssignments = assignmentRepo.findByTrainingId(trainingId);
 
     Set<String> existingUserIds =
