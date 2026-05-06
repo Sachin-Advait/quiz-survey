@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.controller.BunnyController;
 import com.gissoftware.quiz_survey.controller.QuizSurveySseController;
 import com.gissoftware.quiz_survey.dto.TrainingEditDTO;
 import com.gissoftware.quiz_survey.dto.TrainingEngagementDTO;
@@ -10,10 +11,11 @@ import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import com.gissoftware.quiz_survey.repository.TrainingAssignmentRepository;
 import com.gissoftware.quiz_survey.repository.TrainingMaterialRepository;
-import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -21,24 +23,54 @@ import java.io.ByteArrayOutputStream;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TrainingService {
 
+
+    private static final Logger log = LoggerFactory.getLogger(TrainingService.class);
+
     private final TrainingMaterialRepository materialRepo;
     private final TrainingAssignmentRepository assignmentRepo;
-    private final UserRepository userRepo;
     private final FCMService fcmService;
     private final QuizSurveySseController quizSurveySseController;
+    private final BunnyController bunnyService;
+
+    // ================= BUNNY ENCODING CHECK =================
+    private boolean waitForBunnyEncoding(String videoPublicId) {
+        if (videoPublicId == null || videoPublicId.isBlank()) return true;
+
+        long deadline = System.currentTimeMillis() + (600 * 1000L);
+
+        while (System.currentTimeMillis() < deadline) {
+            try {
+                Map<String, Object> status = bunnyService.getVideoStatus(videoPublicId);
+
+                int statusCode = ((Number) status.get("status")).intValue();
+                int progress = ((Number) status.get("encodeProgress")).intValue();
+
+                if (statusCode == 4 && progress >= 100) return true;
+
+            } catch (Exception e) {
+                log.warn("Bunny status poll failed for videoId={}: {}", videoPublicId, e.getMessage());
+            }
+
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+        }
+
+        log.warn("Bunny encoding timed out for videoId={}", videoPublicId);
+        return false;
+    }
 
     // ================= ADMIN =================
-
     @Async
     public void uploadAndAssignAsync(TrainingUploadAssignDTO request) {
         TrainingMaterial material =
@@ -109,7 +141,15 @@ public class TrainingService {
             }
 
             if (!batch.isEmpty()) assignmentRepo.saveAll(batch);
-            quizSurveySseController.pushNewTraining(savedMaterial, request.getUserIds());
+            boolean encoded = !"video".equalsIgnoreCase(savedMaterial.getType())
+                    || waitForBunnyEncoding(savedMaterial.getVideoPublicId());
+
+            if (encoded) {
+                quizSurveySseController.pushNewTraining(savedMaterial, request.getUserIds());
+            } else {
+                log.warn("Skipping SSE push — Bunny encoding not complete for trainingId={}",
+                        savedMaterial.getId());
+            }
 
             // single count update
             savedMaterial.setAssignedTo((int) assignmentRepo.countByTrainingId(savedMaterial.getId()));
@@ -157,23 +197,27 @@ public class TrainingService {
 
         if (!batch.isEmpty()) assignmentRepo.saveAll(batch);
 
-        materialRepo
-                .findById(trainingId)
-                .ifPresent(
-                        material -> {
-                            material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
-                            materialRepo.save(material);
-                            quizSurveySseController.pushNewTraining(material, userIds);
+        materialRepo.findById(trainingId).ifPresent(material -> {
+            material.setAssignedTo((int) assignmentRepo.countByTrainingId(trainingId));
+            materialRepo.save(material);
 
-                            fcmService.notifyTrainingAssigned(
-                                    trainingId,
-                                    material.getTitle(),
-                                    batch.stream().map(TrainingAssignment::getUserId).toList());
-                        });
+            boolean encoded = !"video".equalsIgnoreCase(material.getType())
+                    || waitForBunnyEncoding(material.getVideoPublicId());
+
+            if (encoded) {
+                quizSurveySseController.pushNewTraining(material, userIds);
+            } else {
+                log.warn("Skipping SSE in AssignTraining — Bunny encoding not complete for trainingId={}", trainingId);
+            }
+
+            fcmService.notifyTrainingAssigned(
+                    trainingId,
+                    material.getTitle(),
+                    batch.stream().map(TrainingAssignment::getUserId).toList());
+        });
     }
 
     // ================= USER =================
-
     public List<TrainingAssignment> getUserTrainings(String userId) {
         return assignmentRepo.findByUserId(userId);
     }
