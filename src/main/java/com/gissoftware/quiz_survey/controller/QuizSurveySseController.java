@@ -31,38 +31,33 @@ public class QuizSurveySseController {
     private static final int MAX_CONNECTIONS_PER_USER = 5;
     private static final long EMITTER_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(10);
 
-    private final Map<String, CopyOnWriteArrayList<SseEmitter>> userEmitters =
-            new ConcurrentHashMap<>();
+    private final Map<String, CopyOnWriteArrayList<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
     private final AtomicInteger totalConnections = new AtomicInteger(0);
     private ScheduledExecutorService heartbeatScheduler;
 
     @PostConstruct
     public void startHeartbeat() {
-        heartbeatScheduler =
-                Executors.newSingleThreadScheduledExecutor(
-                        r -> {
-                            Thread t = new Thread(r, "sse-heartbeat");
-                            t.setDaemon(true);
-                            return t;
-                        });
+        heartbeatScheduler = Executors.newSingleThreadScheduledExecutor(
+                r -> {
+                    Thread t = new Thread(r, "sse-heartbeat");
+                    t.setDaemon(true);
+                    return t;
+                });
 
-        heartbeatScheduler.scheduleAtFixedRate(
-                () -> {
-                    userEmitters.forEach(
-                            (userId, emitters) -> {
-                                emitters.forEach(
-                                        emitter -> {
-                                            try {
-                                                emitter.send(SseEmitter.event().comment("keep-alive"));
-                                            } catch (IOException e) {
-                                                log.debug("Keep-alive failed for user {}", userId);
-                                            }
-                                        });
-                            });
-                },
-                20,
-                20,
-                TimeUnit.SECONDS);
+        heartbeatScheduler.scheduleAtFixedRate(() -> {
+            userEmitters.forEach((userId, emitters) -> {
+                for (SseEmitter emitter : emitters) {
+                    try {
+                        emitter.send(SseEmitter.event().comment("keep-alive"));
+                    } catch (IOException e) {
+                        log.debug("Keep-alive failed for user {} — completing emitter", userId);
+                        // callback fires and handles cleanup in ONE place.
+                        // Do NOT manually remove/decrement here — that causes double decrement.
+                        emitter.completeWithError(e);
+                    }
+                }
+            });
+        }, 20, 20, TimeUnit.SECONDS);
 
         log.info("SSE heartbeat scheduler started.");
     }
@@ -91,54 +86,57 @@ public class QuizSurveySseController {
                     HttpStatus.TOO_MANY_REQUESTS, "Too many connections for this user.");
         }
 
-        SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
-
-        // ✅ Register callbacks BEFORE adding to map and BEFORE send
-        Runnable cleanup =
-                () -> {
-                    if (!emitters.contains(emitter)) return;
-                    emitters.remove(emitter);
-                    totalConnections.decrementAndGet();
-                    if (emitters.isEmpty()) {
-                        userEmitters.remove(userId);
-                    }
-                    log.info(
-                            "Emitter removed for user {}. Total connections: {}", userId, totalConnections.get());
-                };
-
-        // ✅ THIS WAS MISSING — actually register the callbacks on the emitter
-        emitter.onCompletion(
-                () -> {
-                    log.info("onCompletion fired for user {}", userId);
-                    cleanup.run();
-                });
-        emitter.onTimeout(
-                () -> {
-                    log.warn("onTimeout fired for user {}", userId);
-                    cleanup.run();
-                });
-        emitter.onError(
-                e -> {
-                    log.warn("onError fired for user {}: {}", userId, e.getMessage());
-                    cleanup.run();
-                });
+        SseEmitter emitter = getSseEmitter(userId, emitters);
 
         emitters.add(emitter);
         totalConnections.incrementAndGet();
         log.info("User {} subscribed. Total connections: {}", userId, totalConnections.get());
 
-        // ✅ Send handshake AFTER callbacks registered
         try {
             emitter.send(SseEmitter.event().name("connected").data("ready"));
             log.info("Handshake sent to user {}", userId);
         } catch (IOException e) {
             log.error("Handshake failed for user {}", userId, e);
-            cleanup.run();
-            throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to establish SSE stream.");
+            emitter.completeWithError(e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to establish SSE stream.");
         }
 
         log.info("Emitter map after subscribe: {}", userEmitters.keySet());
+        return emitter;
+    }
+
+    private SseEmitter getSseEmitter(String userId, CopyOnWriteArrayList<SseEmitter> emitters) {
+        SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
+
+        // Cleanup — called ONLY from the registered callbacks below.
+        // Push methods and heartbeat must NOT do this manually — they call
+        // emitter.completeWithError() which triggers this callback instead.
+        Runnable cleanup = () -> {
+            if (emitters.remove(emitter)) {
+                totalConnections.decrementAndGet();
+                if (emitters.isEmpty()) {
+                    userEmitters.remove(userId);
+                }
+                log.info(
+                        "Emitter removed for user {}. Total connections: {}",
+                        userId,
+                        totalConnections.get());
+            }
+        };
+
+        emitter.onCompletion(() -> {
+            log.info("onCompletion fired for user {}", userId);
+            cleanup.run();
+        });
+        emitter.onTimeout(() -> {
+            log.warn("onTimeout fired for user {}", userId);
+            emitter.complete();
+            cleanup.run();
+        });
+        emitter.onError(e -> {
+            log.warn("onError fired for user {}: {}", userId, e.getMessage());
+            cleanup.run();
+        });
         return emitter;
     }
 
@@ -162,14 +160,10 @@ public class QuizSurveySseController {
             for (SseEmitter emitter : emitters) {
                 try {
                     Map<String, Object> payload = Map.of(
-                            "type",
-                            "SURVEY",
-                            "id",
-                            quizSurvey.getId(),
-                            "data",
-                            quizSurvey,
-                            "isMandatory",
-                            quizSurvey.getIsMandatory());
+                            "type", "SURVEY",
+                            "id", quizSurvey.getId(),
+                            "data", quizSurvey,
+                            "isMandatory", quizSurvey.getIsMandatory());
 
                     emitter.send(
                             SseEmitter.event().id(eventId).name("mandatory").data(payload).reconnectTime(3000));
@@ -178,8 +172,7 @@ public class QuizSurveySseController {
 
                 } catch (IOException e) {
                     log.warn("❌ Failed to push survey to user {}: {}", userId, e.getMessage());
-                    emitters.remove(emitter);
-                    totalConnections.decrementAndGet();
+                    emitter.completeWithError(e);
                 }
             }
         }
@@ -204,16 +197,11 @@ public class QuizSurveySseController {
 
             for (SseEmitter emitter : emitters) {
                 try {
-                    Map<String, Object> payload =
-                            Map.of(
-                                    "type",
-                                    "OFFER",
-                                    "id",
-                                    offer.getId(),
-                                    "data",
-                                    offer,
-                                    "isMandatory",
-                                    offer.getIsMandatory());
+                    Map<String, Object> payload = Map.of(
+                            "type", "OFFER",
+                            "id", offer.getId(),
+                            "data", offer,
+                            "isMandatory", offer.getIsMandatory());
 
                     emitter.send(
                             SseEmitter.event().id(eventId).name("mandatory").data(payload).reconnectTime(3000));
@@ -222,8 +210,7 @@ public class QuizSurveySseController {
 
                 } catch (IOException e) {
                     log.warn("❌ Failed to push offer to user {}: {}", userId, e.getMessage());
-                    emitters.remove(emitter);
-                    totalConnections.decrementAndGet();
+                    emitter.completeWithError(e);
                 }
             }
         }
@@ -248,16 +235,11 @@ public class QuizSurveySseController {
 
             for (SseEmitter emitter : emitters) {
                 try {
-                    Map<String, Object> payload =
-                            Map.of(
-                                    "type",
-                                    "TRAINING",
-                                    "id",
-                                    training.getId(),
-                                    "data",
-                                    training,
-                                    "isMandatory",
-                                    training.getIsMandatory());
+                    Map<String, Object> payload = Map.of(
+                            "type", "TRAINING",
+                            "id", training.getId(),
+                            "data", training,
+                            "isMandatory", training.getIsMandatory());
 
                     emitter.send(
                             SseEmitter.event().id(eventId).name("mandatory").data(payload).reconnectTime(3000));
@@ -266,34 +248,9 @@ public class QuizSurveySseController {
 
                 } catch (IOException e) {
                     log.warn("❌ Failed to push training to user {}: {}", userId, e.getMessage());
-                    emitters.remove(emitter);
-                    totalConnections.decrementAndGet();
+                    emitter.completeWithError(e);
                 }
             }
         }
-    }
-
-    private void evictDeadEmitters(String userId, CopyOnWriteArrayList<SseEmitter> emitters) {
-        emitters.forEach(
-                emitter -> {
-                    try {
-                        emitter.send(SseEmitter.event().comment("probe"));
-                    } catch (Exception e) {
-                        log.debug("Evicting dead emitter for user {}", userId);
-                        emitters.remove(emitter);
-                        totalConnections.decrementAndGet();
-                    }
-                });
-        if (emitters.isEmpty()) {
-            userEmitters.remove(userId);
-        }
-    }
-
-    public int getActiveConnectionCount() {
-        return totalConnections.get();
-    }
-
-    public int getConnectedUserCount() {
-        return userEmitters.size();
     }
 }

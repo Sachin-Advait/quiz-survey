@@ -1,11 +1,8 @@
 package com.gissoftware.quiz_survey.service;
 
-import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
 import com.gissoftware.quiz_survey.dto.QuizCompletionStatsDTO;
 import com.gissoftware.quiz_survey.dto.QuizInsightsDTO;
 import com.gissoftware.quiz_survey.dto.QuizResponseByRegionDTO;
-import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
-import com.gissoftware.quiz_survey.mapper.SurveyResponseStatsMapper;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.SurveyDefinition;
@@ -30,9 +27,6 @@ public class AdminQuizService {
     private final QuizSurveyRepository quizSurveyRepo;
     private final ResponseRepo responseRepo;
     private final UserRepository userRepository;
-    private final QuizSurveySocketController quizSurveySocketController;
-    private final QuizSurveyMapper quizSurveyMapper;
-    private final SurveyResponseStatsMapper surveyResponseStatsMapper;
 
 
     private static boolean isCorrect(Object correctAnswer, Object userAnswer) {
