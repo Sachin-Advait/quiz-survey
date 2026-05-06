@@ -43,10 +43,8 @@ public class QuizSurveyService {
 
     // Get Quiz & Survey By ID
     public QuizSurveyDTO getQuizSurvey(String id) {
-        QuizSurveyModel quiz =
-                quizSurveyRepo
-                        .findById(id)
-                        .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
+        QuizSurveyModel quiz = quizSurveyRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
 
         return QuizSurveyDTO.builder()
                 .id(quiz.getId())
@@ -102,10 +100,9 @@ public class QuizSurveyService {
 
             query.addCriteria(Criteria.where("createdAt").gte(startDate).lt(endDate));
         }
-
+        List<QuizSurveyModel> allResults;
         // Execute the query first to get eligible quizzes
-        List<QuizSurveyModel> allResults =
-                mongoTemplate.find(Query.of(query).limit(-1).skip(-1), QuizSurveyModel.class);
+        allResults = mongoTemplate.find(Query.of(query).limit(-1).skip(-1), QuizSurveyModel.class);
 
         // Apply participation filter if needed
         if (userId != null && participation != null && !participation.equalsIgnoreCase("All")) {
@@ -116,43 +113,37 @@ public class QuizSurveyService {
 
             if (participation.equalsIgnoreCase("Participated")) {
                 // Filter to show only quizzes where user has submitted responses
-                allResults =
-                        allResults.stream()
-                                .filter(quiz -> participatedQuizIds.contains(quiz.getId()))
-                                .collect(Collectors.toList());
+                allResults = allResults.stream()
+                        .filter(quiz -> participatedQuizIds.contains(quiz.getId()))
+                        .collect(Collectors.toList());
+
             } else if (participation.equalsIgnoreCase("Not Participated")) {
                 // Filter to show only quizzes where user has NOT submitted responses
-                allResults =
-                        allResults.stream()
-                                .filter(quiz -> !participatedQuizIds.contains(quiz.getId()))
-                                .collect(Collectors.toList());
+                allResults = allResults.stream()
+                        .filter(quiz -> !participatedQuizIds.contains(quiz.getId()))
+                        .collect(Collectors.toList());
             }
         }
 
         // Apply sorting
         if (pageable.getSort().isSorted()) {
-            allResults =
-                    allResults.stream()
-                            .sorted(
-                                    (q1, q2) -> {
-                                        for (Sort.Order order : pageable.getSort()) {
-                                            int comparison = 0;
-                                            if ("createdAt".equals(order.getProperty())) {
-                                                comparison = q1.getCreatedAt().compareTo(q2.getCreatedAt());
-                                            }
-                                            // Add other sortable fields as needed
+            allResults = allResults.stream().sorted((q1, q2) -> {
+                for (Sort.Order order : pageable.getSort()) {
+                    int comparison = 0;
+                    if ("createdAt".equals(order.getProperty())) {
+                        comparison = q1.getCreatedAt().compareTo(q2.getCreatedAt());
+                    }
 
-                                            if (order.getDirection() == Sort.Direction.DESC) {
-                                                comparison = -comparison;
-                                            }
+                    if (order.getDirection() == Sort.Direction.DESC) {
+                        comparison = -comparison;
+                    }
 
-                                            if (comparison != 0) {
-                                                return comparison;
-                                            }
-                                        }
-                                        return 0;
-                                    })
-                            .collect(Collectors.toList());
+                    if (comparison != 0) {
+                        return comparison;
+                    }
+                }
+                return 0;
+            }).collect(Collectors.toList());
         }
 
         // Apply pagination manually
@@ -176,27 +167,21 @@ public class QuizSurveyService {
             Instant startDate,
             int page,
             int size) {
-        Sort.Direction direction =
-                (sort != null && sort.equalsIgnoreCase("Oldest"))
-                        ? Sort.Direction.ASC
-                        : Sort.Direction.DESC;
+        Sort.Direction direction = (sort != null && sort.equalsIgnoreCase("Oldest"))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, "createdAt"));
 
         Page<QuizSurveyModel> pagedQuizzes =
                 findWithFilters(userId, status, type, participation, startDate, pageable);
 
-        List<QuizzesSurveysDTO> result =
-                pagedQuizzes.getContent().stream()
-                        .map(
-                                q ->
-                                        userId == null
-                                                ? quizSurveyMapper.mapToDtoWithoutUser(q)
-                                                : quizSurveyMapper.mapToDtoWithUser(q, userId))
-                        .toList();
+        List<QuizzesSurveysDTO> result = pagedQuizzes.getContent().stream().map(q ->
+                userId == null
+                        ? quizSurveyMapper.mapToDtoWithoutUser(q)
+                        : quizSurveyMapper.mapToDtoWithUser(q, userId)).toList();
 
-        Page<QuizzesSurveysDTO> dtoPage =
-                new PageImpl<>(result, pageable, pagedQuizzes.getTotalElements());
+        Page<QuizzesSurveysDTO> dtoPage = new PageImpl<>(result, pageable, pagedQuizzes.getTotalElements());
 
         return new PageResponseDTO<>(dtoPage);
     }
@@ -208,13 +193,10 @@ public class QuizSurveyService {
             throw new IllegalArgumentException("Visibility not defined!");
         }
 
-        if (model.getVisibilityType() == VisibilityType.PRIVATE
-                && !model.getUserDataDisplayFields().isEmpty()) {
-            List<String> filteredFields =
-                    model.getUserDataDisplayFields().stream()
-                            .filter(UserDataFieldConstants.ALLOWED_FIELDS::contains)
-                            .distinct()
-                            .toList();
+        if (model.getVisibilityType() == VisibilityType.PRIVATE && !model.getUserDataDisplayFields().isEmpty()) {
+
+            List<String> filteredFields = model.getUserDataDisplayFields().stream()
+                    .filter(UserDataFieldConstants.ALLOWED_FIELDS::contains).distinct().toList();
 
             model.setUserDataDisplayFields(filteredFields);
         } else if (model.getVisibilityType() == VisibilityType.PRIVATE) {
@@ -294,42 +276,31 @@ public class QuizSurveyService {
         double avgScore = totalAttempts > 0 ? (double) totalScore / totalAttempts : 0.0;
 
         List<ResponseModel> sorted =
-                uniqueResponses.stream()
-                        .filter(r -> r.getScore() != null)
-                        .sorted(
-                                Comparator.comparing(ResponseModel::getScore, Comparator.reverseOrder())
-                                        .thenComparing(
-                                                ResponseModel::getFinishTime,
-                                                Comparator.nullsLast(Comparator.naturalOrder()))
-                                        .thenComparing(
-                                                ResponseModel::getSubmittedAt,
-                                                Comparator.nullsLast(Comparator.naturalOrder())))
-                        .toList();
+                uniqueResponses.stream().filter(r -> r.getScore() != null)
+                        .sorted(Comparator.comparing(ResponseModel::getScore, Comparator.reverseOrder())
+                                .thenComparing(
+                                        ResponseModel::getFinishTime,
+                                        Comparator.nullsLast(Comparator.naturalOrder()))
+                                .thenComparing(ResponseModel::getSubmittedAt,
+                                        Comparator.nullsLast(Comparator.naturalOrder()))).toList();
 
         // ✅ Get only top 3 (after proper tie-breaking)
-        List<Map<String, Object>> topScorers =
-                sorted.stream()
-                        .limit(3)
-                        .map(
-                                r -> {
-                                    Map<String, Object> map = new HashMap<>();
-                                    map.put("username", r.getUsername());
-                                    map.put("userId", r.getUserId());
-                                    map.put("score", r.getScore());
-                                    map.put("maxScore", r.getMaxScore());
-                                    map.put("finishTime", r.getFinishTime());
-                                    map.put("submittedAt", r.getSubmittedAt());
-                                    return map;
-                                })
-                        .collect(Collectors.toList());
+        List<Map<String, Object>> topScorers = sorted.stream().limit(3).map(
+                r -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("username", r.getUsername());
+                    map.put("userId", r.getUserId());
+                    map.put("score", r.getScore());
+                    map.put("maxScore", r.getMaxScore());
+                    map.put("finishTime", r.getFinishTime());
+                    map.put("submittedAt", r.getSubmittedAt());
+                    return map;
+                }).collect(Collectors.toList());
 
         return new QuizScoreSummaryDTO(totalAttempts, avgScore, highestScore, maxScore, topScorers);
     }
 
     public QuizSurveyModel getById(String id) {
-        return quizSurveyRepo
-                .findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Quiz/Survey not found"));
+        return quizSurveyRepo.findById(id).orElseThrow(() -> new IllegalArgumentException("Quiz/Survey not found"));
     }
-
 }

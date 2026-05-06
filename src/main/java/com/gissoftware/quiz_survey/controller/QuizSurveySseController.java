@@ -1,5 +1,7 @@
 package com.gissoftware.quiz_survey.controller;
 
+import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
+import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
 import com.gissoftware.quiz_survey.model.OfferModel;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
@@ -7,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,9 +33,11 @@ public class QuizSurveySseController {
     private static final int MAX_TOTAL_CONNECTIONS = 10_000;
     private static final int MAX_CONNECTIONS_PER_USER = 5;
     private static final long EMITTER_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(10);
-
     private final Map<String, CopyOnWriteArrayList<SseEmitter>> userEmitters = new ConcurrentHashMap<>();
     private final AtomicInteger totalConnections = new AtomicInteger(0);
+    
+    @Autowired
+    private QuizSurveyMapper quizSurveyMapper;
     private ScheduledExecutorService heartbeatScheduler;
 
     @PostConstruct
@@ -158,11 +163,12 @@ public class QuizSurveySseController {
             if (emitters == null || emitters.isEmpty()) continue;
 
             for (SseEmitter emitter : emitters) {
+                QuizzesSurveysDTO quizDto = quizSurveyMapper.mapToDtoWithUser(quizSurvey, userId);
                 try {
                     Map<String, Object> payload = Map.of(
                             "type", "SURVEY",
                             "id", quizSurvey.getId(),
-                            "data", quizSurvey,
+                            "data", quizDto,
                             "isMandatory", quizSurvey.getIsMandatory());
 
                     emitter.send(
