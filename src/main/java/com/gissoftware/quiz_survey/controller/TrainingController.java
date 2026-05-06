@@ -8,8 +8,15 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user/training")
@@ -18,15 +25,175 @@ public class TrainingController {
 
   private final TrainingService trainingService;
 
-  // ================= ADMIN =================
-  @PostMapping
-  public ResponseEntity<ApiResponseDTO<TrainingMaterial>> uploadTraining(
-      @RequestBody TrainingUploadAssignDTO request) {
+  @Value("${bunny.storage.api-key}")
+  private String bunnyStorageApiKey;
 
-    TrainingMaterial savedMaterial = trainingService.uploadAndAssign(request);
+  @Value("${bunny.storage.cdn-url}")
+  private String bunnyStorageCdnUrl;
+
+  @Value("${bunny.library-id}")
+  private String libraryId;
+
+  @Value("${bunny.storage.zone}")
+  private String bunnyStorageZone;
+
+  @Value("${bunny.api-key}")
+  private String bunnyApiKey;
+
+  @GetMapping("/bunny/tus-signature")
+  public ResponseEntity<Map<String, String>> getTusSignature(@RequestParam String videoId) {
+    long expires = Instant.now().getEpochSecond() + 15 * 60; // 15 min
+
+    String raw = libraryId + bunnyApiKey + expires + videoId;
+    String signature = DigestUtils.sha256Hex(raw);
 
     return ResponseEntity.ok(
-        new ApiResponseDTO<>(true, "Training uploaded and assigned successfully", savedMaterial));
+        Map.of(
+            "signature", signature,
+            "expires", String.valueOf(expires),
+            "libraryId", libraryId,
+            "videoId", videoId));
+  }
+
+  @PostMapping("/bunny/upload-document")
+  public ResponseEntity<Map<String, String>> uploadDocument(
+      @RequestParam("file") MultipartFile file) throws Exception {
+
+    if (file == null || file.isEmpty()) {
+      throw new IllegalArgumentException("File is required");
+    }
+
+    String contentType = file.getContentType();
+    String originalName =
+        file.getOriginalFilename() != null ? file.getOriginalFilename().toLowerCase() : "";
+
+    // Allowed MIME types
+    List<String> allowedMimeTypes =
+        List.of(
+            "application/pdf",
+
+            // Word
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
+            // Excel
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.ms-excel.sheet.macroEnabled.12",
+            "application/vnd.ms-excel.sheet.binary.macroEnabled.12",
+            "text/csv",
+
+            // PowerPoint
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation");
+
+    // Extension fallback (important for browser inconsistencies)
+    boolean isExcelOrPpt =
+        originalName.endsWith(".xls")
+            || originalName.endsWith(".xlsx")
+            || originalName.endsWith(".xlsm")
+            || originalName.endsWith(".xlsb")
+            || originalName.endsWith(".csv")
+            || originalName.endsWith(".ppt")
+            || originalName.endsWith(".pptx")
+            || originalName.endsWith(".pdf")
+            || originalName.endsWith(".doc")
+            || originalName.endsWith(".docx");
+
+    if (!allowedMimeTypes.contains(contentType) && !isExcelOrPpt) {
+      throw new IllegalArgumentException("Unsupported document type");
+    }
+
+    // Generate safe file name
+    String fileName =
+        System.currentTimeMillis() + "_" + originalName.replaceAll("[^a-zA-Z0-9._-]", "_");
+
+    String uploadUrl = "https://sg.storage.bunnycdn.com/" + bunnyStorageZone + "/" + fileName;
+
+    // Upload to Bunny Storage
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyStorageApiKey);
+    headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+
+    HttpEntity<byte[]> entity = new HttpEntity<>(file.getBytes(), headers);
+
+    RestTemplate restTemplate = new RestTemplate();
+    restTemplate.put(uploadUrl, entity);
+
+    // Public CDN URL response
+    return ResponseEntity.ok(
+        Map.of(
+            "documentUrl",
+            bunnyStorageCdnUrl + "/" + fileName,
+            "fileName",
+            file.getOriginalFilename(),
+            "type",
+            "document"));
+  }
+
+  @GetMapping("/bunny/upload-signature")
+  public ResponseEntity<Map<String, String>> getUploadSignature(
+      @RequestParam String videoId, @RequestParam long fileSize) {
+
+    long expires = Instant.now().getEpochSecond() + 600;
+
+    String raw = libraryId + videoId + expires + fileSize + bunnyApiKey;
+    String signature = DigestUtils.sha256Hex(raw);
+
+    return ResponseEntity.ok(
+        Map.of(
+            "videoId",
+            videoId,
+            "libraryId",
+            libraryId,
+            "expires",
+            String.valueOf(expires),
+            "signature",
+            signature,
+            "uploadUrl",
+            "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId));
+  }
+
+  @PostMapping("/bunny/create-video")
+  public ResponseEntity<Map<String, String>> createVideo(@RequestParam String title) {
+
+    RestTemplate rest = new RestTemplate();
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyApiKey);
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
+    HttpEntity<Map<String, String>> req = new HttpEntity<>(Map.of("title", title), headers);
+
+    String url = "https://video.bunnycdn.com/library/" + libraryId + "/videos";
+    ResponseEntity<Map> res = rest.postForEntity(url, req, Map.class);
+
+    String videoId = (String) res.getBody().get("guid");
+
+    return ResponseEntity.ok(
+        Map.of(
+            "videoId",
+            videoId,
+            "uploadUrl",
+            "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId));
+  }
+
+  @GetMapping("/bunny/upload-token")
+  public ResponseEntity<Map<String, String>> getUploadToken() {
+    return ResponseEntity.ok(
+        Map.of(
+            "accessKey", bunnyApiKey // you can rotate later if needed
+            ));
+  }
+
+  @PostMapping
+  public ResponseEntity<ApiResponseDTO<Void>> uploadTraining(
+      @RequestBody TrainingUploadAssignDTO request) {
+
+    trainingService.uploadAndAssignAsync(request);
+
+    return ResponseEntity.accepted()
+        .body(new ApiResponseDTO<>(true, "Training uploaded and assignment started", null));
   }
 
   @GetMapping
@@ -95,6 +262,32 @@ public class TrainingController {
             true, "Engagement fetched successfully", trainingService.getEngagement(trainingId)));
   }
 
+  @GetMapping("/engagement/excel")
+  public ResponseEntity<byte[]> downloadEngagementExcel(
+      @RequestParam(required = false) String trainingId) {
+
+    byte[] excelBytes = trainingService.getEngagementExcel(trainingId);
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(
+        MediaType.parseMediaType(
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+    headers.setContentDispositionFormData("attachment", "training_engagement.xlsx");
+    headers.setCacheControl("no-cache, no-store, must-revalidate");
+
+    return ResponseEntity.ok().headers(headers).body(excelBytes);
+  }
+
+  @GetMapping("/{trainingId}/engagement")
+  public ResponseEntity<ApiResponseDTO<List<TrainingEngagementDTO>>> getEngagementByTrainingId(
+      @PathVariable String trainingId) {
+
+    List<TrainingEngagementDTO> engagement = trainingService.getEngagementByTrainingId(trainingId);
+
+    return ResponseEntity.ok(
+        new ApiResponseDTO<>(true, "Engagement fetched successfully", engagement));
+  }
+
   // ================= ADMIN =================
 
   @PutMapping("/{trainingId}")
@@ -121,5 +314,28 @@ public class TrainingController {
     return ResponseEntity.ok(
         new ApiResponseDTO<>(
             true, "Training fetched successfully", trainingService.getTrainingById(trainingId)));
+  }
+
+  @GetMapping("/bunny/video-status/{videoId}")
+  public ResponseEntity<Map<String, Object>> getBunnyVideoStatus(@PathVariable String videoId) {
+
+    String url = "https://video.bunnycdn.com/library/" + libraryId + "/videos/" + videoId;
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.set("AccessKey", bunnyApiKey);
+
+    HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+    RestTemplate restTemplate = new RestTemplate();
+
+    ResponseEntity<Map> response =
+        restTemplate.exchange(url, org.springframework.http.HttpMethod.GET, entity, Map.class);
+
+    Map body = response.getBody();
+
+    return ResponseEntity.ok(
+        Map.of(
+            "status", body.get("status"),
+            "encodeProgress", body.getOrDefault("encodeProgress", 0)));
   }
 }

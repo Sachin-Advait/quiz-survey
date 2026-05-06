@@ -10,16 +10,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class UserClientService {
 
-  private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
-  public ClientUserMappingDTO getUserIdByClientId(String staffId) {
+    public ClientUserMappingDTO getUserIdByClientId(String staffId, String quarter, Integer year) {
 
-    UserModel user =
-        userRepository
-            .findByStaffId(staffId)
-            .orElseThrow(
-                () -> new IllegalArgumentException("User not found for staffId: " + staffId));
+        UserModel user = userRepository.findByStaffIdAndQuarterAndYear(staffId, quarter, year)
+                .orElseThrow(() -> new IllegalArgumentException("User not found for staffId: " + staffId));
 
-    return new ClientUserMappingDTO(staffId, user.getId());
-  }
+        return new ClientUserMappingDTO(staffId, user.getId());
+    }
 }

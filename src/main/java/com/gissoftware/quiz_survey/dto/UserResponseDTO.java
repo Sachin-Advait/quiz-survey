@@ -22,5 +22,9 @@ public class UserResponseDTO {
     private String region;
     private String outlet;
     private String position;
+    private String channel;
+    private String quarter;
+    private Integer year;
+    private Boolean activeUser;
     private Instant createdAt;
 }

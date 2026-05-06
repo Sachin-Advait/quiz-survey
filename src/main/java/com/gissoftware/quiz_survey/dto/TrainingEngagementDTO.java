@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.dto;
 
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -11,9 +12,11 @@ import lombok.NoArgsConstructor;
 @Builder
 public class TrainingEngagementDTO {
   private String userId;
+  private String staffId;
   private String learner;
   private String trainingId;
   private String video;
   private int progress;
   private String status;
+  private Instant viewedAt;
 }

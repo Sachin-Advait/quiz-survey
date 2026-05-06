@@ -1,7 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.Utils.UserDataFieldConstants;
-import com.gissoftware.quiz_survey.controller.QuizSurveySocketController;
+import com.gissoftware.quiz_survey.controller.QuizSurveySseController;
 import com.gissoftware.quiz_survey.dto.PageResponseDTO;
 import com.gissoftware.quiz_survey.dto.QuizScoreSummaryDTO;
 import com.gissoftware.quiz_survey.dto.QuizSurveyDTO;
@@ -15,6 +15,8 @@ import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -29,14 +31,15 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class QuizSurveyService {
+    private static final Logger log = LoggerFactory.getLogger(QuizSurveyService.class);
 
     private final QuizSurveyRepository quizSurveyRepo;
     private final UserRepository userRepository;
-    private final QuizSurveySocketController quizSurveySocketController;
     private final QuizSurveyMapper quizSurveyMapper;
     private final ResponseRepo responseRepo;
     private final FCMService fcmService;
     private final MongoTemplate mongoTemplate;
+    private final QuizSurveySseController quizSurveySseController;
 
     // Get Quiz & Survey By ID
     public QuizSurveyDTO getQuizSurvey(String id) {
@@ -220,7 +223,7 @@ public class QuizSurveyService {
 
         model.setIsAnnounced(model.getAnnouncementMode() == AnnouncementMode.IMMEDIATE);
         QuizSurveyModel savedQuiz = quizSurveyRepo.save(model);
-        quizSurveySocketController.pushNewSurvey(savedQuiz.getId(), savedQuiz.getIsMandatory(), savedQuiz.getTargetedUsers());
+        quizSurveySseController.pushNewSurvey(savedQuiz);
 
         fcmService.notifyQuizSurveyAssigned(savedQuiz);
         return savedQuiz;
@@ -322,4 +325,11 @@ public class QuizSurveyService {
 
         return new QuizScoreSummaryDTO(totalAttempts, avgScore, highestScore, maxScore, topScorers);
     }
+
+    public QuizSurveyModel getById(String id) {
+        return quizSurveyRepo
+                .findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Quiz/Survey not found"));
+    }
+
 }

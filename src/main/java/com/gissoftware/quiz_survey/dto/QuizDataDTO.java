@@ -1,17 +1,17 @@
 package com.gissoftware.quiz_survey.dto;
 
-
+import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class PushQuizSurveyMessage {
-    private String quizSurveyId;
-    private Boolean isMandatory;
-    private List<String> targetedUsers;
+public class QuizDataDTO {
+
+  private String quizId;
+  private String quizName;
+  private Instant quizDate;
+  private double score;
 }

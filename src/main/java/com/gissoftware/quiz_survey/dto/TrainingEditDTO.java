@@ -14,25 +14,25 @@ import lombok.NoArgsConstructor;
 public class TrainingEditDTO {
 
   private String id;
-
   private String title;
   private String type;
   private String duration;
   private String region;
+  private Integer durationSeconds;
 
-  // assignment stats (read-only in UI)
   private Integer assignedTo;
   private Integer completionRate;
+  private Instant dueDate;
 
-  // media (Cloudinary now, Bunny later)
-  private String mediaUrl;
-  private String mediaPublicId;
-  private String mediaResourceType;
-  private String mediaFormat;
+  // ✅ VIDEO (GENERIC)
+  private String videoProvider;
+  private String videoPublicId;
+  private String videoPlaybackUrl;
+  private String videoFormat;
 
   private Boolean active;
   private Instant uploadDate;
 
-  // ⭐ OPTIONAL (recommended for edit UI)
   private List<String> assignedUserIds;
+  private Boolean isMandatory;
 }

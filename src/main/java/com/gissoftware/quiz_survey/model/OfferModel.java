@@ -23,6 +23,8 @@ public class OfferModel {
     @Id
     private String id;
 
+    private OfferType type;
+
     private String title;
     private String description;
 
@@ -34,10 +36,13 @@ public class OfferModel {
 
     private String region;
     private List<String> targetUsers;
+    private Boolean isMandatory;
 
     private String status; // active | inactive | draft
 
     private Instant validUntil;
+
+    private String imageUrl;
 
     @CreatedDate
     private Instant createdAt;

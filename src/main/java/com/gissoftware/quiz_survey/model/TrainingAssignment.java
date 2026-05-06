@@ -1,6 +1,5 @@
 package com.gissoftware.quiz_survey.model;
 
-import java.time.Instant;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,23 +9,38 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.config.EnableMongoAuditing;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.time.Instant;
+
 @Document("training_assignments")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EnableMongoAuditing
+@org.springframework.data.mongodb.core.index.CompoundIndex(
+        name = "user_training_unique",
+        def = "{ 'userId': 1, 'trainingId': 1 }",
+        unique = true)
 public class TrainingAssignment {
 
-  @Id private String id;
+    @Id
+    private String id;
 
-  private String userId;
-  private String trainingId;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String userId;
 
-  private Integer progress; // %
-  private String status; // not-started, in-progress, completed
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String trainingId;
 
-  private Instant dueDate;
+    private Integer progress;
 
-  @CreatedDate private Instant assignedAt;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String status;
+
+    private Instant dueDate;
+
+    @CreatedDate
+    private Instant assignedAt;
+
+    private Instant viewedAt;
 }

@@ -1,28 +1,42 @@
 package com.gissoftware.quiz_survey.repository;
 
 import com.gissoftware.quiz_survey.model.UserModel;
-import java.util.List;
-import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface UserRepository extends MongoRepository<UserModel, String> {
-  Optional<UserModel> findByStaffId(String staffId);
 
-  Page<UserModel> findByRegionAndOutlet(String region, String outlet, Pageable pageable);
+    // 🔎 Find active user by staffId
+    Optional<UserModel> findByStaffIdAndActiveUserTrue(String staffId);
 
-  Page<UserModel> findByRegion(String region, Pageable pageable);
+    Optional<UserModel> findFirstByStaffIdOrderByYearDescQuarterDesc(String staffId);
 
-  Page<UserModel> findByOutlet(String outlet, Pageable pageable);
+    // 📄 Paging queries (active users only)
+    Page<UserModel> findByRegionAndOutletAndActiveUserTrue(String region, String outlet, Pageable pageable);
 
-  List<UserModel> findByRegion(String region);
+    Page<UserModel> findByRegionAndActiveUserTrue(String region, Pageable pageable);
 
-  List<UserModel> findByOutlet(String outlet);
+    Page<UserModel> findByOutletAndActiveUserTrue(String outlet, Pageable pageable);
 
-  List<UserModel> findByRegionAndOutlet(String region, String outlet);
+    // 📋 List queries (active users only)
+    List<UserModel> findByRegionAndActiveUserTrue(String region);
 
-  @Query(value = "{}", fields = "{ 'region' : 1 }")
-  List<UserModel> findAllRegions();
+    List<UserModel> findByOutletAndActiveUserTrue(String outlet);
+
+    List<UserModel> findByRegionAndOutletAndActiveUserTrue(String region, String outlet);
+
+    // 🗺️ Distinct regions from active users only
+    @Query(value = "{ 'activeUser': true }", fields = "{ 'region' : 1 }")
+    List<UserModel> findAllRegionsOfActiveUsers();
+
+    Page<UserModel> findByActiveUserTrue(Pageable pageable);
+
+    List<UserModel> findByActiveUserTrue();
+
+    Optional<UserModel> findByStaffIdAndQuarterAndYear(String staffId, String quarter, Integer year);
 }

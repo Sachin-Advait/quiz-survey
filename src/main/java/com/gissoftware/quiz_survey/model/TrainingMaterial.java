@@ -16,27 +16,39 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @AllArgsConstructor
 public class TrainingMaterial {
 
-  @Id private String id;
+    @Id
+    private String id;
 
-  private String title;
+    private String title;
+    private String type;
+    private String duration;
+    private Integer durationSeconds;
 
-  private String type; // video, document, interactive
-  private String duration;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String region;
 
-  private String region;
+    private Integer assignedTo;
+    private Integer completionRate;
+    private Integer views;
+    private Instant dueDate;
 
-  private Integer assignedTo;
-  private Integer completionRate;
-  private Integer views;
+    private String videoProvider;
 
-  // ===== Cloudinary fields =====
-  private String cloudinaryPublicId;
-  private String cloudinaryUrl;
-  private String cloudinaryResourceType;
-  private String cloudinaryFormat;
+    @org.springframework.data.mongodb.core.index.Indexed
+    private String videoPublicId;
 
-  private Boolean active = true;
-  private Instant deletedAt;
+    private String videoPlaybackUrl;
+    private String videoFormat;
 
-  @CreatedDate private Instant uploadDate;
+    private String documentUrl;
+
+    @org.springframework.data.mongodb.core.index.Indexed
+    private Boolean active = true;
+
+    private Instant deletedAt;
+
+    @CreatedDate
+    private Instant uploadDate;
+
+    private Boolean isMandatory;
 }
