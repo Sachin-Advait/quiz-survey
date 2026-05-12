@@ -1,14 +1,9 @@
 package com.gissoftware.quiz_survey.service;
 
 import com.gissoftware.quiz_survey.dto.ParticipationStatusDTO;
-import com.gissoftware.quiz_survey.model.QuizSurveyModel;
-import com.gissoftware.quiz_survey.model.ResponseModel;
-import com.gissoftware.quiz_survey.model.UserModel;
-import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
-import com.gissoftware.quiz_survey.repository.ResponseRepo;
-import com.gissoftware.quiz_survey.repository.UserRepository;
-import java.util.List;
-import java.util.Map;
+import com.gissoftware.quiz_survey.model.*;
+import com.gissoftware.quiz_survey.repository.*;
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,78 +12,130 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ParticipationService {
 
-  private final QuizSurveyRepository quizSurveyRepo;
-  private final ResponseRepo responseRepo;
+  private final QuizSurveyRepository quizSurveyRepository;
+  private final ResponseRepo responseRepository;
   private final UserRepository userRepository;
 
   public List<ParticipationStatusDTO> getParticipationStatus(String quizSurveyId) {
-
     QuizSurveyModel qs =
-        quizSurveyRepo
+        quizSurveyRepository
             .findById(quizSurveyId)
-            .orElseThrow(() -> new RuntimeException("Quiz/Survey not found"));
+            .orElseThrow(() -> new RuntimeException("QuizSurvey not found: " + quizSurveyId));
 
-    List<UserModel> users = userRepository.findAllById(qs.getTargetedUsers());
-    List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+    String type = qs.getType();
+    boolean isQuiz = "quiz".equalsIgnoreCase(type);
 
-    // Best attempt per user (highest score)
-    Map<String, ResponseModel> bestResponse =
-        responses.stream()
-            .collect(
-                Collectors.toMap(
-                    ResponseModel::getUserId,
-                    r -> r,
-                    (r1, r2) -> {
-                      if (r1.getScore() == null) return r1;
-                      if (r2.getScore() == null) return r2;
-                      return r1.getScore() >= r2.getScore() ? r1 : r2;
-                    }));
+    List<ResponseModel> responses = responseRepository.findByQuizSurveyId(quizSurveyId);
+    Map<String, ResponseModel> responseByUserId =
+        responses.stream().collect(Collectors.toMap(ResponseModel::getUserId, r -> r, (a, b) -> a));
 
-    boolean isQuiz = qs.getType().equalsIgnoreCase("quiz");
+    List<String> targetedUserIds = qs.getTargetedUsers();
+    if (targetedUserIds == null || targetedUserIds.isEmpty()) return List.of();
 
-    return users.stream()
-        .map(
-            user -> {
-              ResponseModel resp = bestResponse.get(user.getId());
-              boolean participated = resp != null;
+    List<UserModel> users = userRepository.findAllById(targetedUserIds);
+    Map<String, UserModel> userById =
+        users.stream().collect(Collectors.toMap(UserModel::getId, u -> u, (a, b) -> a));
 
-              Integer score = null;
-              Integer maxScore = null;
-              String result;
-              Double percentage = null;
+    // Extract questions from definition
+    List<SurveyDefinition.Element> elements = new ArrayList<>();
+    if (qs.getDefinitionJson() != null && qs.getDefinitionJson().getPages() != null) {
+      for (SurveyDefinition.Page page : qs.getDefinitionJson().getPages()) {
+        if (page.getElements() != null) {
+          elements.addAll(page.getElements());
+        }
+      }
+    }
 
-              if (!participated) {
-                result = isQuiz ? "NOT_ATTEMPTED" : "NOT_SUBMITTED";
-              } else if (isQuiz) {
-                score = resp.getScore();
-                maxScore = resp.getMaxScore();
+    Map<String, Object> answerKey = qs.getAnswerKey() != null ? qs.getAnswerKey() : Map.of();
 
-                if (score != null && maxScore != null) {
-                  result = score >= 0.5 * maxScore ? "PASS" : "FAIL";
-                } else {
-                  result = "FAIL";
-                }
-              } else {
-                result = "SUBMITTED";
-              }
-              if (isQuiz && score != null && maxScore != null && maxScore > 0) {
-                percentage = (score * 100.0) / maxScore;
-              }
+    List<ParticipationStatusDTO> result = new ArrayList<>();
 
-              return ParticipationStatusDTO.builder()
-                  .userId(user.getId())
-                  .staffId(user.getStaffId())
-                  .username(user.getUsername())
-                  .region(user.getRegion())
-                  .outlet(user.getOutlet())
-                  .position(user.getPosition())
-                  .participated(participated)
+    for (String userId : targetedUserIds) {
+      UserModel user = userById.get(userId);
+      String staffId = user != null ? user.getStaffId() : userId;
+      String username = user != null ? user.getUsername() : "";
+      String region = user != null ? user.getRegion() : "";
+      String outlet = user != null ? user.getOutlet() : "";
+      String position = user != null ? user.getPosition() : "";
+
+      boolean participated = responseByUserId.containsKey(userId);
+      ResponseModel response = responseByUserId.get(userId);
+
+      Integer score = response != null ? response.getScore() : null;
+      Integer maxScore = response != null ? response.getMaxScore() : null;
+      Double pct =
+          (score != null && maxScore != null && maxScore > 0) ? (score * 100.0 / maxScore) : null;
+      String res = computeResult(type, participated, score, maxScore);
+
+      if (!participated || !isQuiz || elements.isEmpty()) {
+        // Single row — no question detail
+        result.add(
+            ParticipationStatusDTO.builder()
+                .userId(userId)
+                .staffId(staffId)
+                .username(username)
+                .region(region)
+                .outlet(outlet)
+                .position(position)
+                .title(qs.getTitle())
+                .participated(participated)
+                .score(score)
+                .maxScore(maxScore)
+                .percentage(pct)
+                .result(res)
+                .build());
+      } else {
+        // One row per question
+        Map<String, Object> answers =
+            response.getAnswers() != null ? response.getAnswers() : Map.of();
+
+        for (SurveyDefinition.Element el : elements) {
+          String qName = el.getName();
+          String qTitle = el.getTitle() != null ? el.getTitle() : qName;
+
+          Object agentAnsObj = answers.get(qName);
+          String agentAns = agentAnsObj != null ? agentAnsObj.toString() : "";
+
+          Object correctAnsObj = answerKey.get(qName);
+          String correctAns = correctAnsObj != null ? correctAnsObj.toString() : "";
+
+          boolean questionCompletion = agentAnsObj != null;
+
+          result.add(
+              ParticipationStatusDTO.builder()
+                  .userId(userId)
+                  .staffId(staffId)
+                  .username(username)
+                  .region(region)
+                  .outlet(outlet)
+                  .position(position)
+                  .title(qs.getTitle())
+                  .participated(true)
                   .score(score)
                   .maxScore(maxScore)
-                  .percentage(percentage)
-                  .result(result)
-                  .build();
-            })
-        .toList();
+                  .percentage(pct)
+                  .result(res)
+                  .question(qTitle)
+                  .agentAnswer(agentAns)
+                  .correctAnswer(correctAns)
+                  .completion(questionCompletion)
+                  .quizOpenTime(response.getSubmittedAt())
+                  .agentOpenTime(response.getSubmittedAt())
+                  .agentSubmissionTime(response.getSubmittedAt())
+                  .build());
+        }
+      }
+    }
+
+    return result;
+  }
+
+  private String computeResult(String type, boolean participated, Integer score, Integer maxScore) {
+    if (!participated) return "NOT_SUBMITTED";
+    if ("survey".equalsIgnoreCase(type)) return "SUBMITTED";
+    if (score != null && maxScore != null && maxScore > 0) {
+      return (score * 100.0 / maxScore) >= 60 ? "PASS" : "FAIL";
+    }
+    return "SUBMITTED";
   }
 }

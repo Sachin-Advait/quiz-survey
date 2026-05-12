@@ -1,17 +1,18 @@
 package com.gissoftware.quiz_survey.controller;
 
 import com.gissoftware.quiz_survey.dto.ApiResponseDTO;
+import com.gissoftware.quiz_survey.dto.LoginRequestDTO;
+import com.gissoftware.quiz_survey.dto.LoginResponseDTO;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
 import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import com.gissoftware.quiz_survey.service.UserService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/user")
@@ -77,6 +78,17 @@ public class UserController {
 
         return ResponseEntity.ok(
                 new ApiResponseDTO<>(true, "User id fetched successfully", userService.toDto(user))
+        );
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<ApiResponseDTO<LoginResponseDTO>> login(
+            @RequestBody LoginRequestDTO request) {
+
+        LoginResponseDTO response = userService.loginByStaffId(request.getStaffId());
+
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Login successful", response)
         );
     }
 }

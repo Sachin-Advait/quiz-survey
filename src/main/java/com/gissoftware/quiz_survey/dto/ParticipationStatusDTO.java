@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.dto;
 
+import java.time.Instant;
 import lombok.Builder;
 import lombok.Data;
 
@@ -13,11 +14,22 @@ public class ParticipationStatusDTO {
   private String outlet;
   private String position;
 
+  private String title;
+
   private boolean participated;
 
-  private Integer score; // only for quiz
-  private Integer maxScore; // only for quiz
+  private Integer score;
+  private Integer maxScore;
   private Double percentage;
 
-  private String result; // PASS / FAIL / SUBMITTED / NOT_SUBMITTED
+  private String result;
+
+  // Question-level fields
+  private String question;
+  private String agentAnswer;
+  private String correctAnswer;
+  private Boolean completion;
+  private Instant quizOpenTime;
+  private Instant agentOpenTime;
+  private Instant agentSubmissionTime;
 }
