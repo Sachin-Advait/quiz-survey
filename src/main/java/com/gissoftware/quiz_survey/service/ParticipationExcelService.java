@@ -59,13 +59,17 @@ public class ParticipationExcelService {
       Row header = sheet.createRow(0);
 
       String[] columns;
+
       if (overall) {
+
         columns =
             new String[] {
               "Title",
               "Type",
               "StaffId",
               "Username",
+              "Region",
+              "Outlet",
               "Question",
               "Agent Answer",
               "Correct Answer",
@@ -78,7 +82,9 @@ public class ParticipationExcelService {
               "Percentage",
               "Result"
             };
+
       } else if (isQuiz) {
+
         columns =
             new String[] {
               "Title",
@@ -98,7 +104,9 @@ public class ParticipationExcelService {
               "Percentage",
               "Result"
             };
+
       } else {
+
         // survey
         columns =
             new String[] {
@@ -111,32 +119,46 @@ public class ParticipationExcelService {
       }
 
       int rowIdx = 1;
+
       for (Object obj : list) {
+
         Row row = sheet.createRow(rowIdx++);
 
         if (overall) {
+
           OverallParticipationDTO d = (OverallParticipationDTO) obj;
 
           row.createCell(0).setCellValue(d.getTitle() != null ? d.getTitle() : "");
           row.createCell(1).setCellValue(d.getType() != null ? d.getType() : "");
           row.createCell(2).setCellValue(d.getStaffId() != null ? d.getStaffId() : "");
           row.createCell(3).setCellValue(d.getUsername() != null ? d.getUsername() : "");
-          row.createCell(4).setCellValue(d.getQuestion() != null ? d.getQuestion() : "");
-          row.createCell(5).setCellValue(d.getAgentAnswer() != null ? d.getAgentAnswer() : "");
-          row.createCell(6).setCellValue(d.getCorrectAnswer() != null ? d.getCorrectAnswer() : "");
-          row.createCell(7).setCellValue(d.getCompletion() != null ? d.getCompletion() : false);
-          row.createCell(8).setCellValue(formatInstant(d.getQuizOpenTime()));
-          row.createCell(9).setCellValue(formatInstant(d.getAgentOpenTime()));
-          row.createCell(10).setCellValue(formatInstant(d.getAgentSubmissionTime()));
-          if (d.getScore() != null) row.createCell(11).setCellValue(d.getScore());
-          if (d.getMaxScore() != null) row.createCell(12).setCellValue(d.getMaxScore());
-          if (d.getPercentage() != null) {
-            row.createCell(13).setCellValue(d.getPercentage() / 100);
-            row.getCell(13).setCellStyle(percentStyle);
+          row.createCell(4).setCellValue(d.getRegion() != null ? d.getRegion() : "");
+          row.createCell(5).setCellValue(d.getOutlet() != null ? d.getOutlet() : "");
+          row.createCell(6).setCellValue(d.getQuestion() != null ? d.getQuestion() : "");
+          row.createCell(7).setCellValue(d.getAgentAnswer() != null ? d.getAgentAnswer() : "");
+          row.createCell(8).setCellValue(d.getCorrectAnswer() != null ? d.getCorrectAnswer() : "");
+          row.createCell(9).setCellValue(d.getCompletion() != null ? d.getCompletion() : false);
+          row.createCell(10).setCellValue(formatInstant(d.getQuizOpenTime()));
+          row.createCell(11).setCellValue(formatInstant(d.getAgentOpenTime()));
+          row.createCell(12).setCellValue(formatInstant(d.getAgentSubmissionTime()));
+
+          if (d.getScore() != null) {
+            row.createCell(13).setCellValue(d.getScore());
           }
-          row.createCell(14).setCellValue(d.getResult() != null ? d.getResult() : "");
+
+          if (d.getMaxScore() != null) {
+            row.createCell(14).setCellValue(d.getMaxScore());
+          }
+
+          if (d.getPercentage() != null) {
+            row.createCell(15).setCellValue(d.getPercentage() / 100);
+            row.getCell(15).setCellStyle(percentStyle);
+          }
+
+          row.createCell(16).setCellValue(d.getResult() != null ? d.getResult() : "");
 
         } else if (isQuiz) {
+
           ParticipationStatusDTO d = (ParticipationStatusDTO) obj;
 
           row.createCell(0).setCellValue(d.getTitle() != null ? d.getTitle() : "");
@@ -151,15 +173,24 @@ public class ParticipationExcelService {
           row.createCell(9).setCellValue(formatInstant(d.getQuizOpenTime()));
           row.createCell(10).setCellValue(formatInstant(d.getAgentOpenTime()));
           row.createCell(11).setCellValue(formatInstant(d.getAgentSubmissionTime()));
-          if (d.getScore() != null) row.createCell(12).setCellValue(d.getScore());
-          if (d.getMaxScore() != null) row.createCell(13).setCellValue(d.getMaxScore());
+
+          if (d.getScore() != null) {
+            row.createCell(12).setCellValue(d.getScore());
+          }
+
+          if (d.getMaxScore() != null) {
+            row.createCell(13).setCellValue(d.getMaxScore());
+          }
+
           if (d.getPercentage() != null) {
             row.createCell(14).setCellValue(d.getPercentage() / 100);
             row.getCell(14).setCellStyle(percentStyle);
           }
+
           row.createCell(15).setCellValue(d.getResult() != null ? d.getResult() : "");
 
         } else {
+
           // survey
           ParticipationStatusDTO d = (ParticipationStatusDTO) obj;
 
@@ -178,14 +209,17 @@ public class ParticipationExcelService {
       }
 
       workbook.write(out);
+
       return new ByteArrayInputStream(out.toByteArray());
     }
   }
 
   private String formatInstant(Instant instant) {
+
     if (instant == null) return "";
+
     return DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm:ss")
-        .withZone(ZoneId.of("Asia/Riyadh")) // change to your timezone
+        .withZone(ZoneId.of("Asia/Riyadh"))
         .format(instant);
   }
 }

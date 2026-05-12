@@ -10,6 +10,8 @@ public class OverallParticipationDTO {
   private String quizSurveyId;
   private String title;
   private String type; // quiz | survey
+  private String region;
+  private String outlet;
 
   private String userId;
   private String staffId;

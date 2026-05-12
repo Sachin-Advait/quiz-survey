@@ -21,11 +21,11 @@ public class OverallParticipationService {
     List<ResponseModel> allResponses = responseRepository.findAll();
     List<UserModel> allUsers = userRepository.findAll();
 
-    Map<String, UserModel> userById = allUsers.stream()
-            .collect(Collectors.toMap(UserModel::getId, u -> u, (a, b) -> a));
+    Map<String, UserModel> userById =
+        allUsers.stream().collect(Collectors.toMap(UserModel::getId, u -> u, (a, b) -> a));
 
-    Map<String, List<ResponseModel>> responsesByQuiz = allResponses.stream()
-            .collect(Collectors.groupingBy(ResponseModel::getQuizSurveyId));
+    Map<String, List<ResponseModel>> responsesByQuiz =
+        allResponses.stream().collect(Collectors.groupingBy(ResponseModel::getQuizSurveyId));
 
     List<OverallParticipationDTO> result = new ArrayList<>();
 
@@ -34,9 +34,8 @@ public class OverallParticipationService {
       String type = qs.getType();
       List<ResponseModel> responses = responsesByQuiz.getOrDefault(qsId, List.of());
 
-      Set<String> respondedUserIds = responses.stream()
-              .map(ResponseModel::getUserId)
-              .collect(Collectors.toSet());
+      Set<String> respondedUserIds =
+          responses.stream().map(ResponseModel::getUserId).collect(Collectors.toSet());
 
       List<String> targetedUserIds = qs.getTargetedUsers();
       if (targetedUserIds == null || targetedUserIds.isEmpty()) continue;
@@ -55,43 +54,55 @@ public class OverallParticipationService {
 
       for (String userId : targetedUserIds) {
         UserModel user = userById.get(userId);
+
         String staffId = user != null ? user.getStaffId() : userId;
         String username = user != null ? user.getUsername() : "";
+        String region = user != null ? user.getRegion() : "";
+        String outlet = user != null ? user.getOutlet() : "";
 
         boolean participated = respondedUserIds.contains(userId);
 
-        Optional<ResponseModel> responseOpt = responses.stream()
-                .filter(r -> r.getUserId().equals(userId))
-                .findFirst();
+        Optional<ResponseModel> responseOpt =
+            responses.stream().filter(r -> r.getUserId().equals(userId)).findFirst();
 
         Integer score = responseOpt.map(ResponseModel::getScore).orElse(null);
         Integer maxScore = responseOpt.map(ResponseModel::getMaxScore).orElse(null);
-        Double pct = (score != null && maxScore != null && maxScore > 0)
-                ? (score * 100.0 / maxScore) : null;
+
+        Double pct =
+            (score != null && maxScore != null && maxScore > 0) ? (score * 100.0 / maxScore) : null;
+
         String res = computeResult(type, participated, score, maxScore);
 
         if (!participated || elements.isEmpty()) {
+
           // Single summary row — no question detail
-          result.add(OverallParticipationDTO.builder()
+          result.add(
+              OverallParticipationDTO.builder()
                   .quizSurveyId(qsId)
                   .title(qs.getTitle())
                   .type(type)
                   .userId(userId)
                   .staffId(staffId)
                   .username(username)
+                  .region(region)
+                  .outlet(outlet)
                   .participated(participated)
                   .score(score)
                   .maxScore(maxScore)
                   .percentage(pct)
                   .result(res)
                   .build());
+
         } else {
+
           // One row per question
           ResponseModel response = responseOpt.get();
-          Map<String, Object> answers = response.getAnswers() != null
-                  ? response.getAnswers() : Map.of();
+
+          Map<String, Object> answers =
+              response.getAnswers() != null ? response.getAnswers() : Map.of();
 
           for (SurveyDefinition.Element el : elements) {
+
             String qName = el.getName();
             String qTitle = el.getTitle() != null ? el.getTitle() : qName;
 
@@ -103,13 +114,16 @@ public class OverallParticipationService {
 
             boolean questionCompletion = agentAnsObj != null;
 
-            result.add(OverallParticipationDTO.builder()
+            result.add(
+                OverallParticipationDTO.builder()
                     .quizSurveyId(qsId)
                     .title(qs.getTitle())
                     .type(type)
                     .userId(userId)
                     .staffId(staffId)
                     .username(username)
+                    .region(region)
+                    .outlet(outlet)
                     .participated(true)
                     .score(score)
                     .maxScore(maxScore)
@@ -132,11 +146,15 @@ public class OverallParticipationService {
   }
 
   private String computeResult(String type, boolean participated, Integer score, Integer maxScore) {
+
     if (!participated) return "NOT_SUBMITTED";
+
     if ("survey".equalsIgnoreCase(type)) return "SUBMITTED";
+
     if (score != null && maxScore != null && maxScore > 0) {
       return (score * 100.0 / maxScore) >= 60 ? "PASS" : "FAIL";
     }
+
     return "SUBMITTED";
   }
 }
