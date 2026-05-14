@@ -23,7 +23,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableScheduling
 public class SecurityConfig {
 
-  @Autowired private KongAuthFilter kongAuthFilter;
+  @Autowired
+  private KongAuthFilter kongAuthFilter;
 
   //   Register filters as Spring Beans
   @Bean

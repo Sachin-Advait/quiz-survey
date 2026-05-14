@@ -1,5 +1,7 @@
 package com.gissoftware.quiz_survey.service;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+
 import com.gissoftware.quiz_survey.Utils.ScoringUtil;
 import com.gissoftware.quiz_survey.dto.LowScoringUserDTO;
 import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
@@ -11,6 +13,13 @@ import com.gissoftware.quiz_survey.model.UserModel;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -18,273 +27,331 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-
 @Service
 @RequiredArgsConstructor
 public class ResponseService {
 
-    private final QuizSurveyRepository quizSurveyRepo;
-    private final ResponseRepo responseRepo;
-    private final UserRepository userRepository;
+  private final QuizSurveyRepository quizSurveyRepo;
+  private final ResponseRepo responseRepo;
+  private final UserRepository userRepository;
 
-    private final MongoTemplate mongoTemplate;
+  private final MongoTemplate mongoTemplate;
 
-    // Store Quiz & Survey Responses
-    // @Transactional
-    public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
-        UserModel user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("Invalid username"));
+  // Store Quiz & Survey Responses
+  // @Transactional
+  public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
+    UserModel user =
+        userRepository
+            .findById(request.getUserId())
+            .orElseThrow(() -> new RuntimeException("Invalid username"));
 
-        // Fetch quiz/survey
-        QuizSurveyModel qs = quizSurveyRepo.findById(quizSurveyId)
-                .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
+    // Fetch quiz/survey
+    QuizSurveyModel qs =
+        quizSurveyRepo
+            .findById(quizSurveyId)
+            .orElseThrow(() -> new IllegalArgumentException("Quiz or survey not found"));
 
-        boolean userExists = qs.getTargetedUsers().stream()
-                .anyMatch(s -> s.contains(user.getId()));
+    boolean userExists = qs.getTargetedUsers().stream().anyMatch(s -> s.contains(user.getId()));
 
-        if (!userExists) {
-            throw new IllegalArgumentException("User does not exist in the target users");
-        }
-
-        List<ResponseModel> existingResponses = responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, request.getUserId());
-
-        // ✅ Check if the user has already submitted a response
-        if (qs.getType().equalsIgnoreCase("survey")) {
-            if (!existingResponses.isEmpty()) {
-                throw new IllegalStateException("You have already submitted this survey.");
-            }
-        }
-
-        // Handle response
-        return switch (qs.getType().toLowerCase()) {
-            case "survey" -> handleSurveyResponse(qs, request);
-            case "quiz" -> handleQuizResponse(qs, request);
-            default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
-        };
+    if (!userExists) {
+      throw new IllegalArgumentException("User does not exist in the target users");
     }
 
-    private ResponseModel handleQuizResponse(QuizSurveyModel quiz, SurveySubmissionRequest request) {
-        Map<String, Object> given = request.getAnswers();
-        Map<String, Object> answerKey = quiz.getAnswerKey();
+    List<ResponseModel> existingResponses =
+        responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, request.getUserId());
 
-        Map<String, String> questionTypes = new HashMap<>();
-        Map<String, Integer> questionMarks = new HashMap<>();
-
-        quiz.getDefinitionJson().getPages().forEach(page ->
-                page.getElements().forEach(el -> {
-                    questionTypes.put(el.getName(), el.getType());
-                    questionMarks.put(el.getName(), el.getMarks() != null ? el.getMarks() : 1); // default mark = 1
-                })
-        );
-
-        ScoringUtil.ScoringResult result = ScoringUtil.score(given, answerKey, questionTypes, questionMarks);
-
-        UserModel user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("Invalid userId"));
-
-        quiz.setMaxRetake(quiz.getMaxRetake() - 1);
-        quizSurveyRepo.save(quiz);
-
-
-        return responseRepo.save(ResponseModel.builder()
-                .quizSurveyId(quiz.getId())
-                .userId(request.getUserId())
-                .username(user.getUsername())
-                .answers(request.getAnswers())
-                .score(result.score())
-                .maxScore(quiz.getMaxScore())
-                .finishTime(request.getFinishTime())
-                .build());
+    // ✅ Check if the user has already submitted a response
+    if (qs.getType().equalsIgnoreCase("survey")) {
+      if (!existingResponses.isEmpty()) {
+        throw new IllegalStateException("You have already submitted this survey.");
+      }
     }
 
-    private ResponseModel handleSurveyResponse(QuizSurveyModel survey, SurveySubmissionRequest request) {
-        UserModel user = userRepository.findById(request.getUserId())
-                .orElseThrow(() -> new RuntimeException("Invalid userId"));
+    // Handle response
+    return switch (qs.getType().toLowerCase()) {
+      case "survey" -> handleSurveyResponse(qs, request);
+      case "quiz" -> handleQuizResponse(qs, request);
+      default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
+    };
+  }
 
-        return responseRepo.save(ResponseModel.builder()
-                .quizSurveyId(survey.getId())
-                .userId(request.getUserId())
-                .username(user.getUsername())
-                .answers(request.getAnswers())
-                .score(null)
-                .maxScore(null)
-                .finishTime(request.getFinishTime())
-                .build());
+  private ResponseModel handleQuizResponse(QuizSurveyModel quiz, SurveySubmissionRequest request) {
+
+    Map<String, Object> given = request.getAnswers();
+    Map<String, Object> answerKey = quiz.getAnswerKey();
+
+    Map<String, String> questionTypes = new HashMap<>();
+    Map<String, Integer> questionMarks = new HashMap<>();
+
+    quiz.getDefinitionJson()
+        .getPages()
+        .forEach(
+            page ->
+                page.getElements()
+                    .forEach(
+                        el -> {
+                          questionTypes.put(el.getName(), el.getType());
+                          questionMarks.put(
+                              el.getName(), el.getMarks() != null ? el.getMarks() : 1);
+                        }));
+
+    ScoringUtil.ScoringResult result =
+        ScoringUtil.score(given, answerKey, questionTypes, questionMarks);
+
+    UserModel user =
+        userRepository
+            .findById(request.getUserId())
+            .orElseThrow(() -> new RuntimeException("Invalid userId"));
+
+    quiz.setMaxRetake(quiz.getMaxRetake() - 1);
+    quizSurveyRepo.save(quiz);
+
+    ResponseModel response =
+        responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), request.getUserId()).stream()
+            .filter(r -> r.getOpenedAt() != null)
+            .max(Comparator.comparing(ResponseModel::getOpenedAt))
+            .orElse(new ResponseModel());
+
+    response.setQuizSurveyId(quiz.getId());
+    response.setUserId(request.getUserId());
+    response.setUsername(user.getUsername());
+    response.setAnswers(request.getAnswers());
+    response.setScore(result.score());
+    response.setMaxScore(quiz.getMaxScore());
+    response.setFinishTime(request.getFinishTime());
+
+    if (response.getOpenedAt() == null) {
+      response.setOpenedAt(Instant.now());
     }
 
-    // Get All Responses by User ID
-    public List<ResponseModel> getAllResponsesByUserId(String userId) {
-        return responseRepo.findByUserId(userId);
+    return responseRepo.save(response);
+  }
+
+  private ResponseModel handleSurveyResponse(
+      QuizSurveyModel survey, SurveySubmissionRequest request) {
+
+    UserModel user =
+        userRepository
+            .findById(request.getUserId())
+            .orElseThrow(() -> new RuntimeException("Invalid userId"));
+
+    ResponseModel response =
+        responseRepo.findByQuizSurveyIdAndUserId(survey.getId(), request.getUserId()).stream()
+            .filter(r -> r.getOpenedAt() != null)
+            .max(Comparator.comparing(ResponseModel::getOpenedAt))
+            .orElse(new ResponseModel());
+
+    response.setQuizSurveyId(survey.getId());
+    response.setUserId(request.getUserId());
+    response.setUsername(user.getUsername());
+    response.setAnswers(request.getAnswers());
+    response.setScore(null);
+    response.setMaxScore(null);
+    response.setFinishTime(request.getFinishTime());
+
+    if (response.getOpenedAt() == null) {
+      response.setOpenedAt(Instant.now());
     }
 
-    public List<UserResponseDTO> totalStaffInvited(String quizSurveyId) {
-        QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
-                .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
+    return responseRepo.save(response);
+  }
 
-        List<UserModel> users = userRepository.findAllById(quiz.getTargetedUsers());
+  // Get All Responses by User ID
+  public List<ResponseModel> getAllResponsesByUserId(String userId) {
+    return responseRepo.findByUserId(userId);
+  }
 
-        List<String> userVisibleField = quiz.getUserDataDisplayFields();
+  public List<UserResponseDTO> totalStaffInvited(String quizSurveyId) {
+    QuizSurveyModel quiz =
+        quizSurveyRepo
+            .findById(quizSurveyId)
+            .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
 
-        return users.stream()
-                .map(user -> {
-                    UserResponseDTO.UserResponseDTOBuilder builder = UserResponseDTO.builder();
+    List<UserModel> users = userRepository.findAllById(quiz.getTargetedUsers());
 
-                    builder.id(user.getId());
+    List<String> userVisibleField = quiz.getUserDataDisplayFields();
 
-                    if (userVisibleField.contains("staffId")) {
-                        builder.staffId(user.getStaffId());
-                    }
-                    if (userVisibleField.contains("username")) {
-                        builder.username(user.getUsername());
-                    }
-                    if (userVisibleField.contains("role")) {
-                        builder.role(user.getRole());
-                    }
-                    if (userVisibleField.contains("region")) {
-                        builder.region(user.getRegion());
-                    }
-                    if (userVisibleField.contains("outlet")) {
-                        builder.outlet(user.getOutlet());
-                    }
-                    if (userVisibleField.contains("position")) {
-                        builder.position(user.getPosition());
-                    }
+    return users.stream()
+        .map(
+            user -> {
+              UserResponseDTO.UserResponseDTOBuilder builder = UserResponseDTO.builder();
 
-                    return builder.build();
-                })
-                .collect(Collectors.toList());
-    }
+              builder.id(user.getId());
 
-    public List<ResponseReceivedDTO> totalResponseReceived(String quizSurveyId) {
-        QuizSurveyModel quiz = quizSurveyRepo.findById(quizSurveyId)
-                .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
+              if (userVisibleField.contains("staffId")) {
+                builder.staffId(user.getStaffId());
+              }
+              if (userVisibleField.contains("username")) {
+                builder.username(user.getUsername());
+              }
+              if (userVisibleField.contains("role")) {
+                builder.role(user.getRole());
+              }
+              if (userVisibleField.contains("region")) {
+                builder.region(user.getRegion());
+              }
+              if (userVisibleField.contains("outlet")) {
+                builder.outlet(user.getOutlet());
+              }
+              if (userVisibleField.contains("position")) {
+                builder.position(user.getPosition());
+              }
 
-        List<String> userVisibleField = quiz.getUserDataDisplayFields();
+              return builder.build();
+            })
+        .collect(Collectors.toList());
+  }
 
-        List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
+  public List<ResponseReceivedDTO> totalResponseReceived(String quizSurveyId) {
+    QuizSurveyModel quiz =
+        quizSurveyRepo
+            .findById(quizSurveyId)
+            .orElseThrow(() -> new IllegalArgumentException("Survey not found"));
 
-        Map<String, ResponseModel> highestScoreResponseMap = responses.stream()
-                .collect(Collectors.toMap(
-                        ResponseModel::getUserId,
-                        response -> response,
-                        (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2
-                ));
+    List<String> userVisibleField = quiz.getUserDataDisplayFields();
 
-        List<UserModel> users = userRepository.findAllById(responses.stream().map(ResponseModel::getUserId).toList());
+    List<ResponseModel> responses = responseRepo.findByQuizSurveyId(quizSurveyId);
 
-        return users.stream()
-                .map(user -> {
-                    ResponseModel response = highestScoreResponseMap.get(user.getId());
+    Map<String, ResponseModel> highestScoreResponseMap =
+        responses.stream()
+            .collect(
+                Collectors.toMap(
+                    ResponseModel::getUserId,
+                    response -> response,
+                    (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2));
 
-                    int score = (response.getScore() != null) ? response.getScore() : 0;
-                    int maxScore = (response.getMaxScore() != null) ? response.getMaxScore() : 100;
+    List<UserModel> users =
+        userRepository.findAllById(responses.stream().map(ResponseModel::getUserId).toList());
 
-                    String result = (score >= 0.5 * maxScore) ? "PASS" : "FAIL";
+    return users.stream()
+        .map(
+            user -> {
+              ResponseModel response = highestScoreResponseMap.get(user.getId());
 
-                    ResponseReceivedDTO.ResponseReceivedDTOBuilder builder = ResponseReceivedDTO.builder();
+              int score = (response.getScore() != null) ? response.getScore() : 0;
+              int maxScore = (response.getMaxScore() != null) ? response.getMaxScore() : 100;
 
-                    // Always include ID for identification purposes
-                    builder.id(user.getId());
+              String result = (score >= 0.5 * maxScore) ? "PASS" : "FAIL";
 
-                    builder.result(result);
-                    builder.submittedAt(response.getSubmittedAt());
+              ResponseReceivedDTO.ResponseReceivedDTOBuilder builder =
+                  ResponseReceivedDTO.builder();
 
-                    if (userVisibleField.contains("staffId")) {
-                        builder.staffId(user.getStaffId());
-                    }
-                    if (userVisibleField.contains("username")) {
-                        builder.username(user.getUsername());
-                    }
-                    if (userVisibleField.contains("role")) {
-                        builder.role(user.getRole());
-                    }
-                    if (userVisibleField.contains("region")) {
-                        builder.region(user.getRegion());
-                    }
-                    if (userVisibleField.contains("outlet")) {
-                        builder.outlet(user.getOutlet());
-                    }
-                    if (userVisibleField.contains("position")) {
-                        builder.position(user.getPosition());
-                    }
+              // Always include ID for identification purposes
+              builder.id(user.getId());
 
-                    return builder.build();
+              builder.result(result);
+              builder.submittedAt(response.getSubmittedAt());
 
-                })
-                .collect(Collectors.toList());
-    }
+              if (userVisibleField.contains("staffId")) {
+                builder.staffId(user.getStaffId());
+              }
+              if (userVisibleField.contains("username")) {
+                builder.username(user.getUsername());
+              }
+              if (userVisibleField.contains("role")) {
+                builder.role(user.getRole());
+              }
+              if (userVisibleField.contains("region")) {
+                builder.region(user.getRegion());
+              }
+              if (userVisibleField.contains("outlet")) {
+                builder.outlet(user.getOutlet());
+              }
+              if (userVisibleField.contains("position")) {
+                builder.position(user.getPosition());
+              }
 
-    public List<LowScoringUserDTO> getLowScoringUsers(int weeks, double thresholdPercent) {
-        Instant fromDate = Instant.now().minus(weeks * 7L, ChronoUnit.DAYS);
+              return builder.build();
+            })
+        .collect(Collectors.toList());
+  }
 
-        MatchOperation match = match(
-                Criteria.where("submittedAt").gte(fromDate)
-                        .and("score").ne(null)
-                        .and("maxScore").gt(0)
-        );
+  public List<LowScoringUserDTO> getLowScoringUsers(int weeks, double thresholdPercent) {
+    Instant fromDate = Instant.now().minus(weeks * 7L, ChronoUnit.DAYS);
 
-        AddFieldsOperation addPercentage = addFields()
-                .addField("percentage")
-                .withValue(
-                        ArithmeticOperators.Multiply.valueOf(
-                                ArithmeticOperators.Divide.valueOf("$score").divideBy("$maxScore")
-                        ).multiplyBy(100)
-                ).build();
+    MatchOperation match =
+        match(
+            Criteria.where("submittedAt")
+                .gte(fromDate)
+                .and("score")
+                .ne(null)
+                .and("maxScore")
+                .gt(0));
 
-        GroupOperation groupByUser = group("userId")
-                .avg("percentage").as("avgPercentage")
-                .push("quizSurveyId").as("attemptedQuizzes")
-                .count().as("attemptCount")
-                .first("userId").as("userId")
-                .first("username").as("username");
+    AddFieldsOperation addPercentage =
+        addFields()
+            .addField("percentage")
+            .withValue(
+                ArithmeticOperators.Multiply.valueOf(
+                        ArithmeticOperators.Divide.valueOf("$score").divideBy("$maxScore"))
+                    .multiplyBy(100))
+            .build();
 
-        AddFieldsOperation convertUserId = addFields()
-                .addField("userIdObj")
-                .withValue(ConvertOperators.ToObjectId.toObjectId("$userId"))
-                .build();
+    GroupOperation groupByUser =
+        group("userId")
+            .avg("percentage")
+            .as("avgPercentage")
+            .push("quizSurveyId")
+            .as("attemptedQuizzes")
+            .count()
+            .as("attemptCount")
+            .first("userId")
+            .as("userId")
+            .first("username")
+            .as("username");
 
-        LookupOperation lookupUser = LookupOperation.newLookup()
-                .from("users")
-                .localField("userIdObj")
-                .foreignField("_id")
-                .as("userDetails");
+    AddFieldsOperation convertUserId =
+        addFields()
+            .addField("userIdObj")
+            .withValue(ConvertOperators.ToObjectId.toObjectId("$userId"))
+            .build();
 
-        UnwindOperation unwindUser = unwind("userDetails");
+    LookupOperation lookupUser =
+        LookupOperation.newLookup()
+            .from("users")
+            .localField("userIdObj")
+            .foreignField("_id")
+            .as("userDetails");
 
-        MatchOperation avgBelowThreshold = match(Criteria.where("avgPercentage").lt(thresholdPercent));
+    UnwindOperation unwindUser = unwind("userDetails");
 
-        SortOperation sortByLowest = sort(Sort.by(Sort.Direction.ASC, "avgPercentage"));
+    MatchOperation avgBelowThreshold = match(Criteria.where("avgPercentage").lt(thresholdPercent));
 
-        ProjectionOperation project = project()
-                .and("userId").as("userId")
-                .and("userDetails.staffId").as("staffId")
-                .and("username").as("username")
-                .and("avgPercentage").as("avgPercentage")
-                .and("attemptedQuizzes").as("attemptedQuizzes")
-                .and(ConvertOperators.ToLong.toLong("$attemptCount")).as("attemptCount")
-                .and("userDetails.region").as("region")
-                .and("userDetails.outlet").as("outlet");
+    SortOperation sortByLowest = sort(Sort.by(Sort.Direction.ASC, "avgPercentage"));
 
-        Aggregation aggregation = newAggregation(
-                match,
-                addPercentage,
-                groupByUser,
-                avgBelowThreshold,
-                sortByLowest,
-                convertUserId,
-                lookupUser,
-                unwindUser,
-                project
-        );
+    ProjectionOperation project =
+        project()
+            .and("userId")
+            .as("userId")
+            .and("userDetails.staffId")
+            .as("staffId")
+            .and("username")
+            .as("username")
+            .and("avgPercentage")
+            .as("avgPercentage")
+            .and("attemptedQuizzes")
+            .as("attemptedQuizzes")
+            .and(ConvertOperators.ToLong.toLong("$attemptCount"))
+            .as("attemptCount")
+            .and("userDetails.region")
+            .as("region")
+            .and("userDetails.outlet")
+            .as("outlet");
 
-        return mongoTemplate.aggregate(aggregation, "responses", LowScoringUserDTO.class).getMappedResults();
-    }
+    Aggregation aggregation =
+        newAggregation(
+            match,
+            addPercentage,
+            groupByUser,
+            avgBelowThreshold,
+            sortByLowest,
+            convertUserId,
+            lookupUser,
+            unwindUser,
+            project);
+
+    return mongoTemplate
+        .aggregate(aggregation, "responses", LowScoringUserDTO.class)
+        .getMappedResults();
+  }
 }

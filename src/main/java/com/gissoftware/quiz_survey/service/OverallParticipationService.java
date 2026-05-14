@@ -63,8 +63,9 @@ public class OverallParticipationService {
         boolean participated = respondedUserIds.contains(userId);
 
         Optional<ResponseModel> responseOpt =
-            responses.stream().filter(r -> r.getUserId().equals(userId)).findFirst();
-
+            responses.stream()
+                .filter(r -> r.getUserId().equals(userId))
+                .max(Comparator.comparing(ResponseModel::getSubmittedAt));
         Integer score = responseOpt.map(ResponseModel::getScore).orElse(null);
         Integer maxScore = responseOpt.map(ResponseModel::getMaxScore).orElse(null);
 
@@ -133,8 +134,8 @@ public class OverallParticipationService {
                     .agentAnswer(agentAns)
                     .correctAnswer(correctAns)
                     .completion(questionCompletion)
-                    .quizOpenTime(response.getSubmittedAt())
-                    .agentOpenTime(response.getSubmittedAt())
+                    .quizOpenTime(qs.getCreatedAt())
+                    .agentOpenTime(response.getOpenedAt())
                     .agentSubmissionTime(response.getSubmittedAt())
                     .build());
           }
