@@ -26,9 +26,15 @@ public class ParticipationService {
     boolean isQuiz = "quiz".equalsIgnoreCase(type);
 
     List<ResponseModel> responses = responseRepository.findByQuizSurveyId(quizSurveyId);
-    Map<String, ResponseModel> responseByUserId =
-        responses.stream().collect(Collectors.toMap(ResponseModel::getUserId, r -> r, (a, b) -> a));
 
+    Map<String, ResponseModel> responseByUserId =
+        responses.stream()
+            .filter(r -> r.getScore() != null)
+            .collect(
+                Collectors.toMap(
+                    ResponseModel::getUserId,
+                    r -> r,
+                    (r1, r2) -> r1.getSubmittedAt().isAfter(r2.getSubmittedAt()) ? r1 : r2));
     List<String> targetedUserIds = qs.getTargetedUsers();
     if (targetedUserIds == null || targetedUserIds.isEmpty()) return List.of();
 
@@ -119,8 +125,8 @@ public class ParticipationService {
                   .agentAnswer(agentAns)
                   .correctAnswer(correctAns)
                   .completion(questionCompletion)
-                  .quizOpenTime(response.getSubmittedAt())
-                  .agentOpenTime(response.getSubmittedAt())
+                  .quizOpenTime(qs.getCreatedAt())
+                  .agentOpenTime(response.getOpenedAt())
                   .agentSubmissionTime(response.getSubmittedAt())
                   .build());
         }

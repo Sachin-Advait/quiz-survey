@@ -30,10 +30,12 @@ public class ResultService {
     // FIX: answerKey can be null
     Map<String, Object> answerKey =
         Optional.ofNullable(quizSurvey.getAnswerKey()).orElse(Collections.emptyMap());
-
     List<ResponseModel> responses =
         Optional.ofNullable(responseRepo.findByQuizSurveyId(quizSurveyId))
-            .orElse(Collections.emptyList());
+            .orElse(Collections.emptyList())
+            .stream()
+            .filter(r -> r.getScore() != null)
+            .toList();
 
     return responses.stream()
         .collect(Collectors.groupingBy(r -> Optional.ofNullable(r.getUserId()).orElse("unknown")))
@@ -88,10 +90,7 @@ public class ResultService {
             .filter(r -> r.getScore() != null)
             .max(
                 Comparator.comparing(
-                        ResponseModel::getSubmittedAt,
-                        Comparator.nullsLast(Comparator.naturalOrder()))
-                    .thenComparing(
-                        ResponseModel::getScore, Comparator.nullsLast(Integer::compareTo)))
+                    ResponseModel::getSubmittedAt, Comparator.nullsLast(Comparator.naturalOrder())))
             .orElseThrow(() -> new IllegalArgumentException("No responses found."));
 
     return mapQuizResponseToDTO(highestScoreResp, quizSurvey.getDefinitionJson(), answerKey);

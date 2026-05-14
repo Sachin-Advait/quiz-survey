@@ -106,25 +106,24 @@ public class ResponseService {
     quiz.setMaxRetake(quiz.getMaxRetake() - 1);
     quizSurveyRepo.save(quiz);
 
-    ResponseModel response =
+    Instant openedAt =
         responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), request.getUserId()).stream()
-            .filter(r -> r.getOpenedAt() != null)
-            .max(Comparator.comparing(ResponseModel::getOpenedAt))
-            .orElse(new ResponseModel());
+            .map(ResponseModel::getOpenedAt)
+            .filter(java.util.Objects::nonNull)
+            .max(Comparator.naturalOrder())
+            .orElse(null);
 
-    response.setQuizSurveyId(quiz.getId());
-    response.setUserId(request.getUserId());
-    response.setUsername(user.getUsername());
-    response.setAnswers(request.getAnswers());
-    response.setScore(result.score());
-    response.setMaxScore(quiz.getMaxScore());
-    response.setFinishTime(request.getFinishTime());
-
-    if (response.getOpenedAt() == null) {
-      response.setOpenedAt(Instant.now());
-    }
-
-    return responseRepo.save(response);
+    return responseRepo.save(
+        ResponseModel.builder()
+            .quizSurveyId(quiz.getId())
+            .userId(request.getUserId())
+            .username(user.getUsername())
+            .answers(request.getAnswers())
+            .score(result.score())
+            .maxScore(quiz.getMaxScore())
+            .finishTime(request.getFinishTime())
+            .openedAt(openedAt)
+            .build());
   }
 
   private ResponseModel handleSurveyResponse(
@@ -135,25 +134,24 @@ public class ResponseService {
             .findById(request.getUserId())
             .orElseThrow(() -> new RuntimeException("Invalid userId"));
 
-    ResponseModel response =
+    Instant openedAt =
         responseRepo.findByQuizSurveyIdAndUserId(survey.getId(), request.getUserId()).stream()
-            .filter(r -> r.getOpenedAt() != null)
-            .max(Comparator.comparing(ResponseModel::getOpenedAt))
-            .orElse(new ResponseModel());
+            .map(ResponseModel::getOpenedAt)
+            .filter(java.util.Objects::nonNull)
+            .max(Comparator.naturalOrder())
+            .orElse(null);
 
-    response.setQuizSurveyId(survey.getId());
-    response.setUserId(request.getUserId());
-    response.setUsername(user.getUsername());
-    response.setAnswers(request.getAnswers());
-    response.setScore(null);
-    response.setMaxScore(null);
-    response.setFinishTime(request.getFinishTime());
-
-    if (response.getOpenedAt() == null) {
-      response.setOpenedAt(Instant.now());
-    }
-
-    return responseRepo.save(response);
+    return responseRepo.save(
+        ResponseModel.builder()
+            .quizSurveyId(survey.getId())
+            .userId(request.getUserId())
+            .username(user.getUsername())
+            .answers(request.getAnswers())
+            .score(null)
+            .maxScore(null)
+            .finishTime(request.getFinishTime())
+            .openedAt(openedAt)
+            .build());
   }
 
   // Get All Responses by User ID
