@@ -26,4 +26,6 @@ public class OfferView {
   private String userName;
 
   private Instant viewedAt;
+  private String platform; // WEB or MOBILE
+  private String client; // Chrome, Edge, Android, IOS etc.
 }

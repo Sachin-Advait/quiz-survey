@@ -3,6 +3,7 @@ package com.gissoftware.quiz_survey.controller;
 import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.service.ResponseService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,14 +16,26 @@ public class ResponseController {
 
     private final ResponseService responseService;
 
+
     @PostMapping("/user/submit/{id}")
     public ResponseEntity<ApiResponseDTO<ResponseModel>> submitResponse(
             @PathVariable String id,
-            @RequestBody SurveySubmissionRequest request
+            @RequestBody SurveySubmissionRequest request,
+            HttpServletRequest httpRequest
     ) {
-        ResponseModel response = responseService.storeResponse(id, request);
-        return ResponseEntity.ok(new ApiResponseDTO<>(true,
-                "Response submitted successfully", response));
+
+        String userAgent = httpRequest.getHeader("User-Agent");
+
+        ResponseModel response =
+                responseService.storeResponse(id, request, userAgent);
+
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(
+                        true,
+                        "Response submitted successfully",
+                        response
+                )
+        );
     }
 
     @GetMapping("/user/responses/by-user/{userId}")

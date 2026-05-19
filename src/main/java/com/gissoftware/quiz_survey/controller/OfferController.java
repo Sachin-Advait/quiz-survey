@@ -5,6 +5,7 @@ import com.gissoftware.quiz_survey.dto.OfferResponseDTO;
 import com.gissoftware.quiz_survey.model.OfferModel;
 import com.gissoftware.quiz_survey.service.OfferService;
 import com.gissoftware.quiz_survey.service.OfferViewService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class OfferController {
 
   private final OfferService offerService;
   private final OfferViewService offerViewService;
+  private final HttpServletRequest httpRequest;
 
   @Value("${bunny.storage.api-key}")
   private String bunnyStorageApiKey;
@@ -139,8 +141,9 @@ public class OfferController {
   @PutMapping("/{offerId}/view")
   public ResponseEntity<ApiResponseDTO<Void>> markOfferAsViewed(
       @PathVariable String offerId, @RequestParam String userId) {
+    String userAgent = httpRequest.getHeader("User-Agent");
 
-    offerViewService.markOfferViewed(offerId, userId);
+    offerViewService.markOfferViewed(offerId, userId, userAgent);
 
     return ResponseEntity.ok(new ApiResponseDTO<>(true, "Offer marked as viewed", null));
   }

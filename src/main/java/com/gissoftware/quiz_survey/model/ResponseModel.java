@@ -19,18 +19,18 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Builder
 @EnableMongoAuditing
 public class ResponseModel {
-    @Id
-    private String id;
-    private String quizSurveyId;
-    private String userId;
-    private String username;
-    private Map<String, Object> answers;
-    private Integer score; // null for survey
-    private Integer maxScore; // null for survey
-    private Duration finishTime;
+  @Id private String id;
+  private String quizSurveyId;
+  private String userId;
+  private String username;
+  private Map<String, Object> answers;
+  private Integer score; // null for survey
+  private Integer maxScore; // null for survey
+  private Duration finishTime;
 
-    private Instant openedAt;
+  private Instant openedAt;
 
-    @CreatedDate
-    private Instant submittedAt;
+  @CreatedDate private Instant submittedAt;
+  private String platform; // WEB or MOBILE
+  private String client; // Chrome, Edge, Android, iOS, Safari etc.
 }

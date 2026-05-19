@@ -2,6 +2,7 @@ package com.gissoftware.quiz_survey.service;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
+import com.gissoftware.quiz_survey.Utils.DeviceDetectorUtil;
 import com.gissoftware.quiz_survey.Utils.ScoringUtil;
 import com.gissoftware.quiz_survey.dto.LowScoringUserDTO;
 import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
@@ -39,7 +40,8 @@ public class ResponseService {
 
   // Store Quiz & Survey Responses
   // @Transactional
-  public ResponseModel storeResponse(String quizSurveyId, SurveySubmissionRequest request) {
+  public ResponseModel storeResponse(
+      String quizSurveyId, SurveySubmissionRequest request, String userAgent) {
     UserModel user =
         userRepository
             .findById(request.getUserId())
@@ -62,20 +64,24 @@ public class ResponseService {
 
     // ✅ Check if the user has already submitted a response
     if (qs.getType().equalsIgnoreCase("survey")) {
-      if (!existingResponses.isEmpty()) {
+
+      boolean alreadySubmitted = existingResponses.stream().anyMatch(r -> r.getAnswers() != null);
+
+      if (alreadySubmitted) {
         throw new IllegalStateException("You have already submitted this survey.");
       }
     }
 
     // Handle response
     return switch (qs.getType().toLowerCase()) {
-      case "survey" -> handleSurveyResponse(qs, request);
-      case "quiz" -> handleQuizResponse(qs, request);
+      case "survey" -> handleSurveyResponse(qs, request, userAgent);
+      case "quiz" -> handleQuizResponse(qs, request, userAgent);
       default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
     };
   }
 
-  private ResponseModel handleQuizResponse(QuizSurveyModel quiz, SurveySubmissionRequest request) {
+  private ResponseModel handleQuizResponse(
+      QuizSurveyModel quiz, SurveySubmissionRequest request, String userAgent) {
 
     Map<String, Object> given = request.getAnswers();
     Map<String, Object> answerKey = quiz.getAnswerKey();
@@ -108,11 +114,13 @@ public class ResponseService {
 
     Instant openedAt =
         responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), request.getUserId()).stream()
+            .filter(r -> r.getScore() == null && r.getAnswers() == null)
             .map(ResponseModel::getOpenedAt)
             .filter(java.util.Objects::nonNull)
             .max(Comparator.naturalOrder())
             .orElse(null);
-
+    String platform = DeviceDetectorUtil.detectPlatform(userAgent);
+    String client = DeviceDetectorUtil.detectClient(userAgent);
     return responseRepo.save(
         ResponseModel.builder()
             .quizSurveyId(quiz.getId())
@@ -123,11 +131,13 @@ public class ResponseService {
             .maxScore(quiz.getMaxScore())
             .finishTime(request.getFinishTime())
             .openedAt(openedAt)
+            .platform(platform)
+            .client(client)
             .build());
   }
 
   private ResponseModel handleSurveyResponse(
-      QuizSurveyModel survey, SurveySubmissionRequest request) {
+      QuizSurveyModel survey, SurveySubmissionRequest request, String userAgent) {
 
     UserModel user =
         userRepository
@@ -136,10 +146,14 @@ public class ResponseService {
 
     Instant openedAt =
         responseRepo.findByQuizSurveyIdAndUserId(survey.getId(), request.getUserId()).stream()
+            .filter(r -> r.getScore() == null && r.getAnswers() == null)
             .map(ResponseModel::getOpenedAt)
             .filter(java.util.Objects::nonNull)
             .max(Comparator.naturalOrder())
             .orElse(null);
+
+    String platform = DeviceDetectorUtil.detectPlatform(userAgent);
+    String client = DeviceDetectorUtil.detectClient(userAgent);
 
     return responseRepo.save(
         ResponseModel.builder()
@@ -151,6 +165,8 @@ public class ResponseService {
             .maxScore(null)
             .finishTime(request.getFinishTime())
             .openedAt(openedAt)
+            .platform(platform)
+            .client(client)
             .build());
   }
 
@@ -216,8 +232,15 @@ public class ResponseService {
                 Collectors.toMap(
                     ResponseModel::getUserId,
                     response -> response,
-                    (r1, r2) -> r1.getScore() >= r2.getScore() ? r1 : r2));
+                    (r1, r2) -> {
+                      Integer s1 = r1.getScore();
+                      Integer s2 = r2.getScore();
 
+                      if (s1 == null) return r2;
+                      if (s2 == null) return r1;
+
+                      return s1 >= s2 ? r1 : r2;
+                    }));
     List<UserModel> users =
         userRepository.findAllById(responses.stream().map(ResponseModel::getUserId).toList());
 

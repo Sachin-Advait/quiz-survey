@@ -29,7 +29,11 @@ public class ParticipationService {
 
     Map<String, ResponseModel> responseByUserId =
         responses.stream()
-            .filter(r -> r.getScore() != null)
+            .filter(
+                r ->
+                    "survey".equalsIgnoreCase(type)
+                        ? r.getSubmittedAt() != null
+                        : r.getScore() != null)
             .collect(
                 Collectors.toMap(
                     ResponseModel::getUserId,
@@ -73,7 +77,7 @@ public class ParticipationService {
           (score != null && maxScore != null && maxScore > 0) ? (score * 100.0 / maxScore) : null;
       String res = computeResult(type, participated, score, maxScore);
 
-      if (!participated || !isQuiz || elements.isEmpty()) {
+      if (!participated || elements.isEmpty()) {
         // Single row — no question detail
         result.add(
             ParticipationStatusDTO.builder()

@@ -50,6 +50,7 @@ public class QuizSurveyService {
 
     ResponseModel response =
         responseRepo.findByQuizSurveyIdAndUserId(id, userId).stream()
+            .filter(r -> r.getScore() == null && r.getAnswers() == null)
             .max(
                 Comparator.comparing(
                     ResponseModel::getOpenedAt, Comparator.nullsLast(Comparator.naturalOrder())))

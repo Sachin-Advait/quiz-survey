@@ -168,12 +168,14 @@ public class ResultService {
         Optional.ofNullable(responseRepo.findByQuizSurveyId(quizSurveyId))
             .orElse(Collections.emptyList());
     if (responses.isEmpty()) throw new IllegalArgumentException("No responses found.");
-
     ResponseModel userResponse =
         Optional.ofNullable(responseRepo.findByQuizSurveyIdAndUserId(quizSurveyId, userId))
             .orElse(Collections.emptyList())
             .stream()
-            .findFirst()
+            .filter(r -> r.getAnswers() != null)
+            .max(
+                Comparator.comparing(
+                    ResponseModel::getSubmittedAt, Comparator.nullsLast(Comparator.naturalOrder())))
             .orElseThrow(
                 () -> new IllegalArgumentException("Response not found for this user and quiz."));
 

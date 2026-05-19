@@ -4,6 +4,7 @@ import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.TrainingAssignment;
 import com.gissoftware.quiz_survey.model.TrainingMaterial;
 import com.gissoftware.quiz_survey.service.TrainingService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class TrainingController {
 
   private final TrainingService trainingService;
+  private final HttpServletRequest httpRequest;
 
   @Value("${bunny.storage.api-key}")
   private String bunnyStorageApiKey;
@@ -249,7 +251,9 @@ public class TrainingController {
     String trainingId = (String) payload.get("trainingId");
     Integer progress = (Integer) payload.get("progress");
 
-    TrainingAssignment updated = trainingService.updateProgress(userId, trainingId, progress);
+    String userAgent = httpRequest.getHeader("User-Agent");
+
+    TrainingAssignment updated = trainingService.updateProgress(userId, trainingId, progress,userAgent);
     return ResponseEntity.ok(
         new ApiResponseDTO<>(true, "Training progress updated successfully", updated));
   }

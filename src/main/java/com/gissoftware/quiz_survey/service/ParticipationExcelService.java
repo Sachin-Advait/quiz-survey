@@ -110,7 +110,20 @@ public class ParticipationExcelService {
         // survey
         columns =
             new String[] {
-              "Title", "StaffId", "Username", "Region", "Outlet", "Participated", "Result"
+              "Title",
+              "StaffId",
+              "Username",
+              "Region",
+              "Outlet",
+              "Question",
+              "Agent Answer",
+              "Correct Answer",
+              "Completion",
+              "Quiz Open Time",
+              "Agent Open Time",
+              "Agent Submission Time",
+              "Participated",
+              "Result"
             };
       }
 
@@ -199,8 +212,15 @@ public class ParticipationExcelService {
           row.createCell(2).setCellValue(d.getUsername() != null ? d.getUsername() : "");
           row.createCell(3).setCellValue(d.getRegion() != null ? d.getRegion() : "");
           row.createCell(4).setCellValue(d.getOutlet() != null ? d.getOutlet() : "");
-          row.createCell(5).setCellValue(d.isParticipated());
-          row.createCell(6).setCellValue(d.getResult() != null ? d.getResult() : "");
+          row.createCell(5).setCellValue(d.getQuestion() != null ? d.getQuestion() : "");
+          row.createCell(6).setCellValue(d.getAgentAnswer() != null ? d.getAgentAnswer() : "");
+          row.createCell(7).setCellValue(d.getCorrectAnswer() != null ? d.getCorrectAnswer() : "");
+          row.createCell(8).setCellValue(d.getCompletion() != null ? d.getCompletion() : false);
+          row.createCell(9).setCellValue(formatInstant(d.getQuizOpenTime()));
+          row.createCell(10).setCellValue(formatInstant(d.getAgentOpenTime()));
+          row.createCell(11).setCellValue(formatInstant(d.getAgentSubmissionTime()));
+          row.createCell(12).setCellValue(d.isParticipated());
+          row.createCell(13).setCellValue(d.getResult() != null ? d.getResult() : "");
         }
       }
 
