@@ -79,6 +79,110 @@ public class ParticipationExcelService {
         @SuppressWarnings("unchecked")
         List<OverallParticipationDTO> data = (List<OverallParticipationDTO>) list;
 
+        // Group data by quiz survey to create separate question reference sheets
+        Map<String, List<OverallParticipationDTO>> byQuizSurvey =
+            data.stream()
+                .collect(
+                    Collectors.groupingBy(
+                        d -> d.getQuizSurveyId() != null ? d.getQuizSurveyId() : "",
+                        LinkedHashMap::new,
+                        Collectors.toList()));
+
+        // The main sheet was already created at the beginning of buildExcel method
+        Sheet mainSheet = workbook.getSheet(sheetName);
+
+        // Create question reference sheets for each quiz/survey AFTER the main sheet
+        for (Map.Entry<String, List<OverallParticipationDTO>> entry : byQuizSurvey.entrySet()) {
+          List<OverallParticipationDTO> quizData = entry.getValue();
+          OverallParticipationDTO firstRow =
+              quizData.stream()
+                  .filter(d -> d.getQuestionAnswers() != null && !d.getQuestionAnswers().isEmpty())
+                  .findFirst()
+                  .orElse(null);
+
+          if (firstRow != null) {
+            String sheetTitle = firstRow.getTitle() != null ? firstRow.getTitle() : "Untitled";
+            String type = firstRow.getType() != null ? firstRow.getType() : "";
+            boolean isSurveyRef = "survey".equalsIgnoreCase(type);
+
+            // Excel sheet name limit is 31 characters, sanitize the name
+            String sanitizedTitle = sheetTitle.replaceAll("[\\[\\]\\*\\?\\/\\\\:]", "_");
+
+            // Create shorter prefix to allow more space for title
+            String prefix = "QR of "; // "Question Reference" shortened to "QR"
+            String refSheetName = prefix + sanitizedTitle;
+
+            // If still too long, truncate the title
+            if (refSheetName.length() > 31) {
+              int availableForTitle = 31 - prefix.length() - 3; // -3 for "..."
+              sanitizedTitle = sanitizedTitle.substring(0, availableForTitle) + "...";
+              refSheetName = prefix + sanitizedTitle;
+            }
+
+            // Handle duplicate sheet names by appending a number
+            int counter = 1;
+            String originalName = refSheetName;
+            while (workbook.getSheet(refSheetName) != null) {
+              String suffix = "(" + counter + ")";
+              // Recalculate available space considering the suffix
+              int availableLength = 31 - suffix.length();
+              if (originalName.length() > availableLength) {
+                refSheetName = originalName.substring(0, availableLength) + suffix;
+              } else {
+                refSheetName = originalName + suffix;
+              }
+              counter++;
+            }
+
+            Sheet refSheet = workbook.createSheet(refSheetName);
+
+            // Create header for reference sheet
+            Row refHeader = refSheet.createRow(0);
+
+            if (isSurveyRef) {
+              // Survey reference - only Question No and Question
+              refHeader.createCell(0).setCellValue("Question No");
+              refHeader.createCell(1).setCellValue("Question");
+            } else {
+              // Quiz reference - Question No, Question, Marks, Correct Answer
+              refHeader.createCell(0).setCellValue("Question No");
+              refHeader.createCell(1).setCellValue("Question");
+              refHeader.createCell(2).setCellValue("Marks");
+              refHeader.createCell(3).setCellValue("Correct Answer");
+            }
+
+            List<String> questionKeys = new ArrayList<>(firstRow.getQuestionAnswers().keySet());
+            Map<String, Integer> questionMarks =
+                firstRow.getQuestionMarks() != null
+                    ? firstRow.getQuestionMarks()
+                    : new LinkedHashMap<>();
+            Map<String, String> correctAnswers =
+                firstRow.getCorrectAnswers() != null
+                    ? firstRow.getCorrectAnswers()
+                    : new LinkedHashMap<>();
+
+            int refRowIdx = 1;
+            for (int i = 0; i < questionKeys.size(); i++) {
+              String questionKey = questionKeys.get(i);
+              Row refRow = refSheet.createRow(refRowIdx++);
+              refRow.createCell(0).setCellValue("Q" + (i + 1));
+              refRow.createCell(1).setCellValue(questionKey);
+
+              if (!isSurveyRef) {
+                // Only add marks and correct answer for quiz type
+                refRow.createCell(2).setCellValue(questionMarks.getOrDefault(questionKey, 0));
+                refRow.createCell(3).setCellValue(correctAnswers.getOrDefault(questionKey, ""));
+              }
+            }
+
+            // Auto-size columns for reference sheet
+            int numCols = isSurveyRef ? 2 : 4;
+            for (int i = 0; i < numCols; i++) {
+              refSheet.autoSizeColumn(i);
+            }
+          }
+        }
+
         // Find the maximum number of questions any single row has
         int maxQuestions =
             data.stream()
@@ -86,8 +190,8 @@ public class ParticipationExcelService {
                 .max()
                 .orElse(0);
 
-        // Build header row
-        Row header = sheet.createRow(0);
+        // Build header row for main sheet
+        Row header = mainSheet.createRow(0);
         int hCol = 0;
 
         header.createCell(hCol++).setCellValue("Title");
@@ -116,15 +220,12 @@ public class ParticipationExcelService {
           header.createCell(hCol++).setCellValue("Q" + i);
         }
 
-        // Single Question Reference column
-        header.createCell(hCol++).setCellValue("Question Reference");
-
         int totalCols = hCol;
 
         // Write data rows
         int rowIdx = 1;
         for (OverallParticipationDTO d : data) {
-          Row row = sheet.createRow(rowIdx++);
+          Row row = mainSheet.createRow(rowIdx++);
           int col = 0;
 
           row.createCell(col++).setCellValue(d.getTitle() != null ? d.getTitle() : "");
@@ -201,19 +302,9 @@ public class ParticipationExcelService {
               row.createCell(col++).setCellValue("");
             }
           }
-
-          // Question Reference column - comma separated question references for this row
-          StringBuilder questionRef = new StringBuilder();
-          for (int i = 0; i < thisRowQCount; i++) {
-            if (i > 0) {
-              questionRef.append(",");
-            }
-            questionRef.append("Q").append(i + 1).append(" - ").append(thisRowKeys.get(i));
-          }
-          row.createCell(col++).setCellValue(questionRef.toString());
         }
 
-        for (int i = 0; i < totalCols; i++) sheet.autoSizeColumn(i);
+        for (int i = 0; i < totalCols; i++) mainSheet.autoSizeColumn(i);
       }
 
       // ---------------------------------------------------------------
