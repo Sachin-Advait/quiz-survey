@@ -24,6 +24,7 @@ public class OverallParticipationDTO {
   private Integer score;
   private Integer maxScore;
   private Double percentage;
+  private Integer marks;
 
   private String result;
   private Boolean completion;
@@ -34,4 +35,5 @@ public class OverallParticipationDTO {
   // Dynamic columns
   private Map<String, String> questionAnswers;
   private Map<String, String> correctAnswers;
+  private Map<String, Integer> questionMarks; // Add this field
 }

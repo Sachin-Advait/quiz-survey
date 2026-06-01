@@ -21,7 +21,7 @@ public class ParticipationStatusDTO {
   private Integer score;
   private Integer maxScore;
   private Double percentage;
-
+  private Integer marks;
   private String result;
 
   // Question-level fields

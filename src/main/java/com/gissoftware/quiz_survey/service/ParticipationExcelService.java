@@ -110,21 +110,14 @@ public class ParticipationExcelService {
         header.createCell(hCol++).setCellValue("MaxScore");
         header.createCell(hCol++).setCellValue("Percentage");
         header.createCell(hCol++).setCellValue("Result");
-        // Q columns: Q1/1, Q2/2, ... up to maxQuestions
+
+        // Q columns headers - just Q1, Q2, Q3 without marks
         for (int i = 1; i <= maxQuestions; i++) {
           header.createCell(hCol++).setCellValue("Q" + i);
         }
 
-        // A columns: A1, A2, ...
-        for (int i = 1; i <= maxQuestions; i++) {
-          header.createCell(hCol++).setCellValue("A" + i);
-        }
-        // Correct Answer columns — at the end, blank for survey rows
-        for (int i = 1; i <= maxQuestions; i++) {
-          header
-              .createCell(hCol++)
-              .setCellValue(i == 1 ? "Correct Answer" + i : "Correct answer " + i);
-        }
+        // Single Question Reference column
+        header.createCell(hCol++).setCellValue("Question Reference");
 
         int totalCols = hCol;
 
@@ -171,6 +164,7 @@ public class ParticipationExcelService {
           col++;
 
           row.createCell(col++).setCellValue(d.getResult() != null ? d.getResult() : "");
+
           // Get this row's questions in insertion order
           List<String> thisRowKeys =
               d.getQuestionAnswers() != null
@@ -178,29 +172,45 @@ public class ParticipationExcelService {
                   : new ArrayList<>();
           int thisRowQCount = thisRowKeys.size();
 
-          // Q columns — this row's own question titles starting from Q1, blank for extras
+          // Q columns — show "obtainedMarks/totalMarks" format
           for (int i = 0; i < maxQuestions; i++) {
-            String qText = i < thisRowQCount ? thisRowKeys.get(i) : "";
-            row.createCell(col++).setCellValue(qText);
+            if (i < thisRowQCount && !isSurveyRow) {
+              String questionKey = thisRowKeys.get(i);
+              String userAnswer =
+                  d.getQuestionAnswers() != null ? d.getQuestionAnswers().get(questionKey) : "";
+              String correctAnswer =
+                  d.getCorrectAnswers() != null ? d.getCorrectAnswers().get(questionKey) : "";
+              Integer totalMarks =
+                  d.getQuestionMarks() != null
+                      ? d.getQuestionMarks().getOrDefault(questionKey, 0)
+                      : 0;
+
+              int obtainedMarks = 0;
+              // If answer matches correct answer, give full marks for that question
+              if (userAnswer != null
+                  && correctAnswer != null
+                  && userAnswer.trim().equalsIgnoreCase(correctAnswer.trim())) {
+                obtainedMarks = totalMarks;
+              }
+
+              row.createCell(col++).setCellValue(obtainedMarks + "/" + totalMarks);
+            } else if (i < thisRowQCount && isSurveyRow) {
+              // For survey rows, leave blank
+              row.createCell(col++).setCellValue("");
+            } else {
+              row.createCell(col++).setCellValue("");
+            }
           }
 
-          // A columns — this row's own agent answers, blank for extras
-          for (int i = 0; i < maxQuestions; i++) {
-            String ans = "";
-            if (i < thisRowQCount && d.getQuestionAnswers() != null) {
-              ans = d.getQuestionAnswers().getOrDefault(thisRowKeys.get(i), "");
+          // Question Reference column - comma separated question references for this row
+          StringBuilder questionRef = new StringBuilder();
+          for (int i = 0; i < thisRowQCount; i++) {
+            if (i > 0) {
+              questionRef.append(",");
             }
-            row.createCell(col++).setCellValue(ans);
+            questionRef.append("Q").append(i + 1).append(" - ").append(thisRowKeys.get(i));
           }
-
-          // Correct Answer columns — blank for survey rows, blank for extras
-          for (int i = 0; i < maxQuestions; i++) {
-            String ca = "";
-            if (!isSurveyRow && i < thisRowQCount && d.getCorrectAnswers() != null) {
-              ca = d.getCorrectAnswers().getOrDefault(thisRowKeys.get(i), "");
-            }
-            row.createCell(col++).setCellValue(ca);
-          }
+          row.createCell(col++).setCellValue(questionRef.toString());
         }
 
         for (int i = 0; i < totalCols; i++) sheet.autoSizeColumn(i);
@@ -215,14 +225,158 @@ public class ParticipationExcelService {
       //   | Score | MaxScore | Percentage | Result
       //   | Correct Answer | Correct answer 2 | ...
       // ---------------------------------------------------------------
+      //      else if (isQuiz) {
+      //
+      //        @SuppressWarnings("unchecked")
+      //        List<ParticipationStatusDTO> data = (List<ParticipationStatusDTO>) list;
+      //
+      //        Set<String> questionSet = new LinkedHashSet<>();
+      //        for (ParticipationStatusDTO d : data) {
+      //          if (d.getQuestion() != null) questionSet.add(d.getQuestion());
+      //        }
+      //
+      //        List<String> questionList = new ArrayList<>(questionSet);
+      //        int totalQuestions = questionList.size();
+      //
+      //        Map<String, List<ParticipationStatusDTO>> byUser =
+      //            data.stream()
+      //                .collect(
+      //                    Collectors.groupingBy(
+      //                        d -> d.getStaffId() != null ? d.getStaffId() : "",
+      //                        LinkedHashMap::new,
+      //                        Collectors.toList()));
+      //
+      //        Row header = sheet.createRow(0);
+      //        int hCol = 0;
+      //        header.createCell(hCol++).setCellValue("Title");
+      //        header.createCell(hCol++).setCellValue("StaffId");
+      //        header.createCell(hCol++).setCellValue("Username");
+      //        header.createCell(hCol++).setCellValue("Region");
+      //        header.createCell(hCol++).setCellValue("Outlet");
+      //
+      //        header.createCell(hCol++).setCellValue("Completion");
+      //        header.createCell(hCol++).setCellValue("Quiz Open Date");
+      //        header.createCell(hCol++).setCellValue("Quiz Open Time");
+      //        header.createCell(hCol++).setCellValue("Agent Open Date");
+      //        header.createCell(hCol++).setCellValue("Agent Open Time");
+      //        header.createCell(hCol++).setCellValue("Agent Submission Date");
+      //        header.createCell(hCol++).setCellValue("Agent Submission Time");
+      //        header.createCell(hCol++).setCellValue("Time Taken");
+      //        header.createCell(hCol++).setCellValue("Score");
+      //        header.createCell(hCol++).setCellValue("MaxScore");
+      //        header.createCell(hCol++).setCellValue("Percentage");
+      //        header.createCell(hCol++).setCellValue("Result");
+      //        for (int i = 1; i <= totalQuestions; i++) {
+      //          header.createCell(hCol++).setCellValue("Q" + i);
+      //        }
+      //        for (int i = 1; i <= totalQuestions; i++) {
+      //          header.createCell(hCol++).setCellValue("A" + i);
+      //        }
+      //
+      //        for (int i = 1; i <= totalQuestions; i++) {
+      //          header.createCell(hCol++).setCellValue(i == 1 ? "Correct Answer" : "Correct answer
+      // " + i);
+      //        }
+      //
+      //        int totalCols = hCol;
+      //
+      //        int rowIdx = 1;
+      //        for (Map.Entry<String, List<ParticipationStatusDTO>> entry : byUser.entrySet()) {
+      //          List<ParticipationStatusDTO> userRows = entry.getValue();
+      //          ParticipationStatusDTO first = userRows.get(0);
+      //
+      //          Map<String, ParticipationStatusDTO> byQuestion =
+      //              userRows.stream()
+      //                  .filter(d -> d.getQuestion() != null)
+      //                  .collect(
+      //                      Collectors.toMap(
+      //                          ParticipationStatusDTO::getQuestion,
+      //                          d -> d,
+      //                          (a, b) -> a,
+      //                          LinkedHashMap::new));
+      //
+      //          Row row = sheet.createRow(rowIdx++);
+      //          int col = 0;
+      //
+      //          row.createCell(col++).setCellValue(first.getTitle() != null ? first.getTitle() :
+      // "");
+      //          row.createCell(col++).setCellValue(first.getStaffId() != null ? first.getStaffId()
+      // : "");
+      //          row.createCell(col++)
+      //              .setCellValue(first.getUsername() != null ? first.getUsername() : "");
+      //          row.createCell(col++).setCellValue(first.getRegion() != null ? first.getRegion() :
+      // "");
+      //          row.createCell(col++).setCellValue(first.getOutlet() != null ? first.getOutlet() :
+      // "");
+      //          row.createCell(col++)
+      //              .setCellValue(first.getCompletion() != null ? first.getCompletion() : false);
+      //
+      //          row.createCell(col++).setCellValue(formatDate(first.getQuizOpenTime()));
+      //          row.createCell(col++).setCellValue(formatTime(first.getQuizOpenTime()));
+      //
+      //          row.createCell(col++).setCellValue(formatDate(first.getAgentOpenTime()));
+      //          row.createCell(col++).setCellValue(formatTime(first.getAgentOpenTime()));
+      //
+      //          row.createCell(col++).setCellValue(formatDate(first.getAgentSubmissionTime()));
+      //          row.createCell(col++).setCellValue(formatTime(first.getAgentSubmissionTime()));
+      //
+      //          row.createCell(col++)
+      //              .setCellValue(
+      //                  calculateDuration(first.getAgentOpenTime(),
+      // first.getAgentSubmissionTime()));
+      //
+      //          if (first.getScore() != null) row.createCell(col).setCellValue(first.getScore());
+      //          col++;
+      //          if (first.getMaxScore() != null)
+      // row.createCell(col).setCellValue(first.getMaxScore());
+      //          col++;
+      //          if (first.getPercentage() != null) {
+      //            row.createCell(col).setCellValue(first.getPercentage() / 100.0);
+      //            row.getCell(col).setCellStyle(percentStyle);
+      //          }
+      //          col++;
+      //          row.createCell(col++).setCellValue(first.getResult() != null ? first.getResult() :
+      // "");
+      //          // Q columns — question title text as cell value
+      //          for (String q : questionList) {
+      //            row.createCell(col++).setCellValue(q);
+      //          }
+      //
+      //          // A columns — agent answers
+      //          for (String q : questionList) {
+      //            ParticipationStatusDTO qRow = byQuestion.get(q);
+      //            String ans = qRow != null && qRow.getAgentAnswer() != null ?
+      // qRow.getAgentAnswer() : "";
+      //            row.createCell(col++).setCellValue(ans);
+      //          }
+      //
+      //          // Correct Answer columns — at the end
+      //          for (String q : questionList) {
+      //            ParticipationStatusDTO qRow = byQuestion.get(q);
+      //            String ca =
+      //                qRow != null && qRow.getCorrectAnswer() != null ? qRow.getCorrectAnswer() :
+      // "";
+      //            row.createCell(col++).setCellValue(ca);
+      //          }
+      //        }
+      //
+      //        for (int i = 0; i < totalCols; i++) sheet.autoSizeColumn(i);
+      //      }
       else if (isQuiz) {
 
         @SuppressWarnings("unchecked")
         List<ParticipationStatusDTO> data = (List<ParticipationStatusDTO>) list;
 
         Set<String> questionSet = new LinkedHashSet<>();
+        Map<String, Integer> questionMarksMap = new LinkedHashMap<>(); // Store marks per question
         for (ParticipationStatusDTO d : data) {
-          if (d.getQuestion() != null) questionSet.add(d.getQuestion());
+          if (d.getQuestion() != null) {
+            questionSet.add(d.getQuestion());
+            // Store marks for each question if not already stored
+            if (!questionMarksMap.containsKey(d.getQuestion()) && d.getMarks() != null) {
+              questionMarksMap.put(d.getQuestion(), d.getMarks());
+            }
+          }
         }
 
         List<String> questionList = new ArrayList<>(questionSet);
@@ -238,6 +392,7 @@ public class ParticipationExcelService {
 
         Row header = sheet.createRow(0);
         int hCol = 0;
+
         header.createCell(hCol++).setCellValue("Title");
         header.createCell(hCol++).setCellValue("StaffId");
         header.createCell(hCol++).setCellValue("Username");
@@ -256,21 +411,22 @@ public class ParticipationExcelService {
         header.createCell(hCol++).setCellValue("MaxScore");
         header.createCell(hCol++).setCellValue("Percentage");
         header.createCell(hCol++).setCellValue("Result");
-        for (int i = 1; i <= totalQuestions; i++) {
-          header.createCell(hCol++).setCellValue("Q" + i);
-        }
-        for (int i = 1; i <= totalQuestions; i++) {
-          header.createCell(hCol++).setCellValue("A" + i);
+
+        // Q columns with marks
+        for (int i = 0; i < questionList.size(); i++) {
+          String q = questionList.get(i);
+          Integer marks = questionMarksMap.getOrDefault(q, 0);
+          header.createCell(hCol++).setCellValue("Q" + (i + 1) + "/" + marks);
         }
 
-        for (int i = 1; i <= totalQuestions; i++) {
-          header.createCell(hCol++).setCellValue(i == 1 ? "Correct Answer" : "Correct answer " + i);
-        }
+        // Single Question Reference column
+        header.createCell(hCol++).setCellValue("Question Reference");
 
         int totalCols = hCol;
 
         int rowIdx = 1;
         for (Map.Entry<String, List<ParticipationStatusDTO>> entry : byUser.entrySet()) {
+
           List<ParticipationStatusDTO> userRows = entry.getValue();
           ParticipationStatusDTO first = userRows.get(0);
 
@@ -293,6 +449,7 @@ public class ParticipationExcelService {
               .setCellValue(first.getUsername() != null ? first.getUsername() : "");
           row.createCell(col++).setCellValue(first.getRegion() != null ? first.getRegion() : "");
           row.createCell(col++).setCellValue(first.getOutlet() != null ? first.getOutlet() : "");
+
           row.createCell(col++)
               .setCellValue(first.getCompletion() != null ? first.getCompletion() : false);
 
@@ -309,40 +466,57 @@ public class ParticipationExcelService {
               .setCellValue(
                   calculateDuration(first.getAgentOpenTime(), first.getAgentSubmissionTime()));
 
-          if (first.getScore() != null) row.createCell(col).setCellValue(first.getScore());
+          if (first.getScore() != null) {
+            row.createCell(col).setCellValue(first.getScore());
+          }
           col++;
-          if (first.getMaxScore() != null) row.createCell(col).setCellValue(first.getMaxScore());
+
+          if (first.getMaxScore() != null) {
+            row.createCell(col).setCellValue(first.getMaxScore());
+          }
           col++;
+
           if (first.getPercentage() != null) {
             row.createCell(col).setCellValue(first.getPercentage() / 100.0);
             row.getCell(col).setCellStyle(percentStyle);
           }
           col++;
+
           row.createCell(col++).setCellValue(first.getResult() != null ? first.getResult() : "");
-          // Q columns — question title text as cell value
+
+          // Q1/marks, Q2/marks, ...
           for (String q : questionList) {
-            row.createCell(col++).setCellValue(q);
+
+            ParticipationStatusDTO qRow = byQuestion.get(q);
+
+            Integer marks = 0;
+
+            if (qRow != null
+                && qRow.getAgentAnswer() != null
+                && qRow.getCorrectAnswer() != null
+                && qRow.getAgentAnswer().trim().equalsIgnoreCase(qRow.getCorrectAnswer().trim())) {
+
+              marks = qRow.getMarks() != null ? qRow.getMarks() : 1;
+            }
+
+            row.createCell(col++).setCellValue(marks);
           }
 
-          // A columns — agent answers
-          for (String q : questionList) {
-            ParticipationStatusDTO qRow = byQuestion.get(q);
-            String ans = qRow != null && qRow.getAgentAnswer() != null ? qRow.getAgentAnswer() : "";
-            row.createCell(col++).setCellValue(ans);
+          // Question Reference column - comma separated question references
+          StringBuilder questionRef = new StringBuilder();
+          for (int i = 0; i < questionList.size(); i++) {
+            if (i > 0) {
+              questionRef.append(",");
+            }
+            questionRef.append("Q").append(i + 1).append(" - ").append(questionList.get(i));
           }
-
-          // Correct Answer columns — at the end
-          for (String q : questionList) {
-            ParticipationStatusDTO qRow = byQuestion.get(q);
-            String ca =
-                qRow != null && qRow.getCorrectAnswer() != null ? qRow.getCorrectAnswer() : "";
-            row.createCell(col++).setCellValue(ca);
-          }
+          row.createCell(col++).setCellValue(questionRef.toString());
         }
 
-        for (int i = 0; i < totalCols; i++) sheet.autoSizeColumn(i);
+        for (int i = 0; i < totalCols; i++) {
+          sheet.autoSizeColumn(i);
+        }
       }
-
       // ---------------------------------------------------------------
       // SURVEY mode
       //   Title | StaffId | Username | Region | Outlet
@@ -392,12 +566,12 @@ public class ParticipationExcelService {
         header.createCell(hCol++).setCellValue("Participated");
         header.createCell(hCol++).setCellValue("Result");
 
-        for (int i = 1; i <= totalQuestions; i++) {
-          header.createCell(hCol++).setCellValue("Q" + i);
-        }
-        for (int i = 1; i <= totalQuestions; i++) {
-          header.createCell(hCol++).setCellValue("A" + i);
-        }
+        //        for (int i = 1; i <= totalQuestions; i++) {
+        //          header.createCell(hCol++).setCellValue("Q" + i);
+        //        }
+        //        for (int i = 1; i <= totalQuestions; i++) {
+        //          header.createCell(hCol++).setCellValue("A" + i);
+        //        }
 
         int totalCols = hCol;
 
@@ -446,17 +620,18 @@ public class ParticipationExcelService {
 
           row.createCell(col++).setCellValue(first.getResult() != null ? first.getResult() : "");
 
-          // Q columns — question title text as cell value
-          for (String q : questionList) {
-            row.createCell(col++).setCellValue(q);
-          }
-
-          // A columns — agent answers only
-          for (String q : questionList) {
-            ParticipationStatusDTO qRow = byQuestion.get(q);
-            String ans = qRow != null && qRow.getAgentAnswer() != null ? qRow.getAgentAnswer() : "";
-            row.createCell(col++).setCellValue(ans);
-          }
+          //          // Q columns — question title text as cell value
+          //          for (String q : questionList) {
+          //            row.createCell(col++).setCellValue(q);
+          //          }
+          //
+          //          // A columns — agent answers only
+          //          for (String q : questionList) {
+          //            ParticipationStatusDTO qRow = byQuestion.get(q);
+          //            String ans = qRow != null && qRow.getAgentAnswer() != null ?
+          // qRow.getAgentAnswer() : "";
+          //            row.createCell(col++).setCellValue(ans);
+          //          }
         }
 
         for (int i = 0; i < totalCols; i++) sheet.autoSizeColumn(i);

@@ -124,6 +124,7 @@ public class ParticipationService {
                   .score(score)
                   .maxScore(maxScore)
                   .percentage(pct)
+                  .marks(el.getMarks()) // ADD THIS
                   .result(res)
                   .question(qTitle)
                   .agentAnswer(agentAns)

@@ -105,6 +105,7 @@ public class OverallParticipationService {
 
           Map<String, String> questionAnswers = new LinkedHashMap<>();
           Map<String, String> correctAnswers = new LinkedHashMap<>();
+          Map<String, Integer> questionMarks = new LinkedHashMap<>(); // Add this map
           boolean completion = true;
 
           for (SurveyDefinition.Element el : elements) {
@@ -122,6 +123,10 @@ public class OverallParticipationService {
             }
 
             questionAnswers.put(header, agentAns);
+
+            // Store marks for each question
+            Integer marks = el.getMarks() != null ? el.getMarks() : 1;
+            questionMarks.put(header, marks);
 
             // Correct answer — only populated for quiz elements that have one
             String correctAns =
@@ -150,6 +155,7 @@ public class OverallParticipationService {
                   .agentSubmissionTime(response.getSubmittedAt())
                   .questionAnswers(questionAnswers)
                   .correctAnswers(correctAnswers)
+                  .questionMarks(questionMarks) // Add this
                   .build());
         }
       }
