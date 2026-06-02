@@ -102,6 +102,7 @@ public class ParticipationService {
         for (SurveyDefinition.Element el : elements) {
           String qName = el.getName();
           String qTitle = el.getTitle() != null ? el.getTitle() : qName;
+          String arabicTitle = el.getArabicTitle();
 
           Object agentAnsObj = answers.get(qName);
           String agentAns = agentAnsObj != null ? agentAnsObj.toString() : "";
@@ -124,11 +125,12 @@ public class ParticipationService {
                   .score(score)
                   .maxScore(maxScore)
                   .percentage(pct)
-                  .marks(el.getMarks()) // ADD THIS
+                  .marks(el.getMarks())
                   .result(res)
                   .question(qTitle)
                   .agentAnswer(agentAns)
                   .correctAnswer(correctAns)
+                  .arabicTitle(arabicTitle)
                   .completion(questionCompletion)
                   .quizOpenTime(qs.getCreatedAt())
                   .agentOpenTime(response.getOpenedAt())

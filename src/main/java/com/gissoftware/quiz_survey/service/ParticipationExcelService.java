@@ -415,6 +415,16 @@ public class ParticipationExcelService {
           @SuppressWarnings("unchecked")
           List<ParticipationStatusDTO> data = (List<ParticipationStatusDTO>) list;
 
+          // Collect arabic titles from data
+          Map<String, String> arabicTitlesMap = new LinkedHashMap<>();
+          for (ParticipationStatusDTO d : data) {
+            if (d.getQuestion() != null
+                && d.getArabicTitle() != null
+                && !d.getArabicTitle().isEmpty()) {
+              arabicTitlesMap.putIfAbsent(d.getQuestion(), d.getArabicTitle());
+            }
+          }
+
           Set<String> questionSet = new LinkedHashSet<>();
           Map<String, Integer> questionMarksMap = new LinkedHashMap<>();
           for (ParticipationStatusDTO d : data) {
@@ -566,7 +576,7 @@ public class ParticipationExcelService {
             row.createCell(col++).setCellValue("");
           }
 
-          // Add question reference rows
+          // Add question reference rows with Arabic titles
           for (int i = 0; i < questionList.size(); i++) {
             Row refRow = sheet.createRow(rowIdx++);
             int col = 0;
@@ -581,7 +591,9 @@ public class ParticipationExcelService {
 
             refRow.createCell(col++).setCellValue("Q" + (i + 1));
             refRow.createCell(col++).setCellValue(questionList.get(i));
-            refRow.createCell(col++).setCellValue("");
+            refRow
+                .createCell(col++)
+                .setCellValue(arabicTitlesMap.getOrDefault(questionList.get(i), ""));
           }
 
           for (int i = 0; i < firstEmptyCol; i++) {
@@ -603,6 +615,16 @@ public class ParticipationExcelService {
 
           @SuppressWarnings("unchecked")
           List<ParticipationStatusDTO> data = (List<ParticipationStatusDTO>) list;
+
+          // Collect arabic titles from data
+          Map<String, String> arabicTitlesMap = new LinkedHashMap<>();
+          for (ParticipationStatusDTO d : data) {
+            if (d.getQuestion() != null
+                && d.getArabicTitle() != null
+                && !d.getArabicTitle().isEmpty()) {
+              arabicTitlesMap.putIfAbsent(d.getQuestion(), d.getArabicTitle());
+            }
+          }
 
           Set<String> questionSet = new LinkedHashSet<>();
           for (ParticipationStatusDTO d : data) {
@@ -725,7 +747,7 @@ public class ParticipationExcelService {
             row.createCell(col++).setCellValue("");
           }
 
-          // Add question reference rows
+          // Add question reference rows with Arabic titles
           for (int i = 0; i < questionList.size(); i++) {
             Row refRow = sheet.createRow(rowIdx++);
             int col = 0;
@@ -740,7 +762,9 @@ public class ParticipationExcelService {
 
             refRow.createCell(col++).setCellValue("Q" + (i + 1));
             refRow.createCell(col++).setCellValue(questionList.get(i));
-            refRow.createCell(col++).setCellValue("");
+            refRow
+                .createCell(col++)
+                .setCellValue(arabicTitlesMap.getOrDefault(questionList.get(i), ""));
           }
 
           for (int i = 0; i < firstEmptyCol; i++) {

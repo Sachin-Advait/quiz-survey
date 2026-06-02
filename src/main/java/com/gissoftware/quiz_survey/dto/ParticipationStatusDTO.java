@@ -28,6 +28,7 @@ public class ParticipationStatusDTO {
   private String question;
   private String agentAnswer;
   private String correctAnswer;
+  private String arabicTitle;
   private Boolean completion;
   private Instant quizOpenTime;
   private Instant agentOpenTime;

@@ -102,7 +102,10 @@ public class OverallParticipationService {
       for (SurveyDefinition.Element el : elements) {
         String qTitle = el.getTitle() != null ? el.getTitle() : el.getName();
         String arabicTitle = el.getArabicTitle();
-        arabicTitlesMap.put(qTitle, arabicTitle != null ? arabicTitle : "");
+
+        String arabicQuestion =
+            (arabicTitle != null && !arabicTitle.isEmpty()) ? arabicTitle : qTitle;
+        arabicTitlesMap.put(qTitle, arabicQuestion);
       }
 
       for (String userId : targetedUserIds) {
@@ -184,8 +187,10 @@ public class OverallParticipationService {
             Integer marks = el.getMarks() != null ? el.getMarks() : 1;
             questionMarks.put(header, marks);
 
-            // Store Arabic title
-            questionArabicTitles.put(header, arabicTitle != null ? arabicTitle : "");
+            // Store Arabic title - use arabicTitle if available, otherwise use title
+            String arabicQuestion =
+                (arabicTitle != null && !arabicTitle.isEmpty()) ? arabicTitle : qTitle;
+            questionArabicTitles.put(header, arabicQuestion);
 
             // Correct answer — only populated for quiz elements that have one
             String correctAns =
