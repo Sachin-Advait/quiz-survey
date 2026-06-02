@@ -3,6 +3,9 @@ package com.gissoftware.quiz_survey.controller;
 import com.gissoftware.quiz_survey.dto.*;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.service.*;
+import java.io.ByteArrayInputStream;
+import java.time.YearMonth;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
@@ -10,10 +13,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.io.ByteArrayInputStream;
-import java.time.YearMonth;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/admin/quiz-survey")
@@ -182,6 +181,43 @@ public class QuizSurveyAdminController {
         String filename = "Overall-Quiz-Survey-Report.xlsx";
 
         ByteArrayInputStream stream = participationExcelService.generateOverall();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header(HttpHeaders.EXPIRES, "0")
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(stream));
+    }
+    @GetMapping("/participation/overall/quiz/excel")
+    public ResponseEntity<InputStreamResource> downloadOverallQuizExcel() throws Exception {
+
+        String filename = "Overall-Quiz-Report.xlsx";
+
+        ByteArrayInputStream stream = participationExcelService.generateOverallQuiz();
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Disposition")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache, no-store, must-revalidate")
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header(HttpHeaders.EXPIRES, "0")
+                .contentType(
+                        MediaType.parseMediaType(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(new InputStreamResource(stream));
+    }
+
+    @GetMapping("/participation/overall/survey/excel")
+    public ResponseEntity<InputStreamResource> downloadOverallSurveyExcel() throws Exception {
+
+        String filename = "Overall-Survey-Report.xlsx";
+
+        ByteArrayInputStream stream = participationExcelService.generateOverallSurvey();
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")

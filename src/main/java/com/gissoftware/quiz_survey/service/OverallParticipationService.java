@@ -6,21 +6,48 @@ import com.gissoftware.quiz_survey.repository.*;
 import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 public class OverallParticipationService {
 
+  private static final Logger logger = LoggerFactory.getLogger(OverallParticipationService.class);
+
   private final QuizSurveyRepository quizSurveyRepository;
   private final ResponseRepo responseRepository;
   private final UserRepository userRepository;
 
   public List<OverallParticipationDTO> getOverallParticipation() {
+    return getOverallParticipationByType(null);
+  }
+
+  public List<OverallParticipationDTO> getOverallQuizParticipation() {
+    return getOverallParticipationByType("quiz");
+  }
+
+  public List<OverallParticipationDTO> getOverallSurveyParticipation() {
+    return getOverallParticipationByType("survey");
+  }
+
+  private List<OverallParticipationDTO> getOverallParticipationByType(String filterType) {
 
     List<QuizSurveyModel> allQuizSurveys = quizSurveyRepository.findAll();
     List<ResponseModel> allResponses = responseRepository.findAll();
     List<UserModel> allUsers = userRepository.findAll();
+
+    // Check for empty data early
+    if (allQuizSurveys.isEmpty()) {
+      logger.warn("No quizzes or surveys found in database");
+      return Collections.emptyList();
+    }
+
+    if (allUsers.isEmpty()) {
+      logger.warn("No users found in database");
+      return Collections.emptyList();
+    }
 
     Map<String, UserModel> userById =
         allUsers.stream().collect(Collectors.toMap(UserModel::getId, u -> u, (a, b) -> a));
@@ -28,12 +55,30 @@ public class OverallParticipationService {
     Map<String, List<ResponseModel>> responsesByQuiz =
         allResponses.stream().collect(Collectors.groupingBy(ResponseModel::getQuizSurveyId));
 
-    List<OverallParticipationDTO> result = new ArrayList<>();
+    // Estimate size to pre-allocate ArrayList
+    int estimatedSize =
+        allQuizSurveys.stream()
+            .filter(qs -> filterType == null || filterType.equalsIgnoreCase(qs.getType()))
+            .mapToInt(
+                qs -> {
+                  List<String> targets = qs.getTargetedUsers();
+                  return targets != null ? targets.size() : 0;
+                })
+            .sum();
+
+    int initialCapacity = Math.min(estimatedSize, 100000);
+    List<OverallParticipationDTO> result = new ArrayList<>(initialCapacity);
 
     for (QuizSurveyModel qs : allQuizSurveys) {
 
       String qsId = qs.getId();
       String type = qs.getType();
+
+      // Filter by type if specified
+      if (filterType != null && !filterType.equalsIgnoreCase(type)) {
+        continue;
+      }
+
       List<ResponseModel> responses = responsesByQuiz.getOrDefault(qsId, List.of());
 
       Set<String> respondedUserIds =
@@ -105,7 +150,7 @@ public class OverallParticipationService {
 
           Map<String, String> questionAnswers = new LinkedHashMap<>();
           Map<String, String> correctAnswers = new LinkedHashMap<>();
-          Map<String, Integer> questionMarks = new LinkedHashMap<>(); // Add this map
+          Map<String, Integer> questionMarks = new LinkedHashMap<>();
           boolean completion = true;
 
           for (SurveyDefinition.Element el : elements) {
@@ -155,11 +200,16 @@ public class OverallParticipationService {
                   .agentSubmissionTime(response.getSubmittedAt())
                   .questionAnswers(questionAnswers)
                   .correctAnswers(correctAnswers)
-                  .questionMarks(questionMarks) // Add this
+                  .questionMarks(questionMarks)
                   .build());
         }
       }
     }
+
+    logger.info(
+        "Generated {} participation records for filterType: {}",
+        result.size(),
+        filterType != null ? filterType : "all");
 
     return result;
   }
