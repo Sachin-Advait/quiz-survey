@@ -97,6 +97,14 @@ public class OverallParticipationService {
         }
       }
 
+      // Build Arabic titles map from elements
+      Map<String, String> arabicTitlesMap = new LinkedHashMap<>();
+      for (SurveyDefinition.Element el : elements) {
+        String qTitle = el.getTitle() != null ? el.getTitle() : el.getName();
+        String arabicTitle = el.getArabicTitle();
+        arabicTitlesMap.put(qTitle, arabicTitle != null ? arabicTitle : "");
+      }
+
       for (String userId : targetedUserIds) {
 
         UserModel user = userById.get(userId);
@@ -140,6 +148,7 @@ public class OverallParticipationService {
                   .quizOpenTime(qs.getCreatedAt())
                   .agentOpenTime(responseOpt.map(ResponseModel::getOpenedAt).orElse(null))
                   .agentSubmissionTime(responseOpt.map(ResponseModel::getSubmittedAt).orElse(null))
+                  .questionArabicTitles(arabicTitlesMap)
                   .build());
 
         } else {
@@ -151,12 +160,14 @@ public class OverallParticipationService {
           Map<String, String> questionAnswers = new LinkedHashMap<>();
           Map<String, String> correctAnswers = new LinkedHashMap<>();
           Map<String, Integer> questionMarks = new LinkedHashMap<>();
+          Map<String, String> questionArabicTitles = new LinkedHashMap<>();
           boolean completion = true;
 
           for (SurveyDefinition.Element el : elements) {
 
             String qName = el.getName();
             String qTitle = el.getTitle() != null ? el.getTitle() : qName;
+            String arabicTitle = el.getArabicTitle();
 
             String header = qTitle;
 
@@ -172,6 +183,9 @@ public class OverallParticipationService {
             // Store marks for each question
             Integer marks = el.getMarks() != null ? el.getMarks() : 1;
             questionMarks.put(header, marks);
+
+            // Store Arabic title
+            questionArabicTitles.put(header, arabicTitle != null ? arabicTitle : "");
 
             // Correct answer — only populated for quiz elements that have one
             String correctAns =
@@ -201,6 +215,7 @@ public class OverallParticipationService {
                   .questionAnswers(questionAnswers)
                   .correctAnswers(correctAnswers)
                   .questionMarks(questionMarks)
+                  .questionArabicTitles(questionArabicTitles)
                   .build());
         }
       }

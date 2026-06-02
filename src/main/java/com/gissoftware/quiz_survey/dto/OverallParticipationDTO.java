@@ -35,5 +35,6 @@ public class OverallParticipationDTO {
   // Dynamic columns
   private Map<String, String> questionAnswers;
   private Map<String, String> correctAnswers;
-  private Map<String, Integer> questionMarks; // Add this field
+  private Map<String, Integer> questionMarks;
+  private Map<String, String> questionArabicTitles;
 }

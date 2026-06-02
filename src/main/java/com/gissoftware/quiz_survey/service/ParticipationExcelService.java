@@ -96,7 +96,6 @@ public class ParticipationExcelService {
           @SuppressWarnings("unchecked")
           List<OverallParticipationDTO> data = (List<OverallParticipationDTO>) list;
 
-          // Check if data is empty
           if (data == null || data.isEmpty()) {
             workbook.removeSheetAt(workbook.getSheetIndex(sheetName));
             Sheet infoSheet = workbook.createSheet("No Data");
@@ -114,7 +113,6 @@ public class ParticipationExcelService {
             return new ByteArrayInputStream(out.toByteArray());
           }
 
-          // Group data by quiz survey
           Map<String, List<OverallParticipationDTO>> byQuizSurvey =
               data.stream()
                   .collect(
@@ -123,10 +121,8 @@ public class ParticipationExcelService {
                           LinkedHashMap::new,
                           Collectors.toList()));
 
-          // Remove the main sheet
           workbook.removeSheetAt(workbook.getSheetIndex(sheetName));
 
-          // Create a separate sheet for each quiz/survey
           for (Map.Entry<String, List<OverallParticipationDTO>> entry : byQuizSurvey.entrySet()) {
             List<OverallParticipationDTO> quizData = entry.getValue();
 
@@ -137,7 +133,6 @@ public class ParticipationExcelService {
             String type = firstRow.getType() != null ? firstRow.getType() : "";
             boolean isSurveySheet = "survey".equalsIgnoreCase(type);
 
-            // Sanitize sheet name for Excel
             String sanitizedTitle =
                 sheetTitle.replaceAll("[\\[\\]\\*\\?\\/\\\\:]", "_").replaceAll("\\s+", " ").trim();
 
@@ -149,7 +144,6 @@ public class ParticipationExcelService {
               sanitizedTitle = sanitizedTitle.substring(0, 28) + "...";
             }
 
-            // Handle duplicate sheet names
             String sheetNameForQuiz = sanitizedTitle;
             int counter = 1;
             int maxAttempts = 100;
@@ -170,7 +164,6 @@ public class ParticipationExcelService {
 
             Sheet quizSheet = workbook.createSheet(sheetNameForQuiz);
 
-            // Get questions from the first participated row
             OverallParticipationDTO firstWithAnswers =
                 quizData.stream()
                     .filter(
@@ -180,6 +173,7 @@ public class ParticipationExcelService {
 
             List<String> questionKeys = new ArrayList<>();
             Map<String, Integer> questionMarks = new LinkedHashMap<>();
+            Map<String, String> questionArabicTitles = new LinkedHashMap<>();
 
             if (firstWithAnswers != null && firstWithAnswers.getQuestionAnswers() != null) {
               questionKeys = new ArrayList<>(firstWithAnswers.getQuestionAnswers().keySet());
@@ -191,6 +185,10 @@ public class ParticipationExcelService {
               for (String key : questionKeys) {
                 questionMarks.put(key, 1);
               }
+            }
+
+            if (firstWithAnswers != null && firstWithAnswers.getQuestionArabicTitles() != null) {
+              questionArabicTitles = firstWithAnswers.getQuestionArabicTitles();
             }
 
             if (questionKeys.isEmpty()) {
@@ -233,7 +231,6 @@ public class ParticipationExcelService {
               header.createCell(hCol++).setCellValue("Result");
             }
 
-            // Q columns for both quiz and survey
             for (int i = 0; i < questionKeys.size(); i++) {
               if (!isSurveySheet) {
                 Integer marks = questionMarks.getOrDefault(questionKeys.get(i), 0);
@@ -243,28 +240,24 @@ public class ParticipationExcelService {
               }
             }
 
-            // Selected Answer columns for survey only
             if (isSurveySheet) {
               for (int i = 0; i < questionKeys.size(); i++) {
                 header.createCell(hCol++).setCellValue("Selected Answer " + (i + 1));
               }
             }
 
-            // Remember the column index of first empty column
             int firstEmptyCol = hCol;
 
-            // Add 3 empty columns before Question Reference
             for (int i = 0; i < 3; i++) {
               header.createCell(hCol++).setCellValue("");
             }
 
-            // Question Reference header - two columns
             header.createCell(hCol++).setCellValue("Q No");
             header.createCell(hCol++).setCellValue("Question");
+            header.createCell(hCol++).setCellValue("Arabic Question");
 
             int totalCols = hCol;
 
-            // Write data rows
             int rowIdx = 1;
             for (OverallParticipationDTO d : quizData) {
               Row row = quizSheet.createRow(rowIdx++);
@@ -320,13 +313,11 @@ public class ParticipationExcelService {
 
               row.createCell(col++).setCellValue(d.getResult() != null ? d.getResult() : "N/A");
 
-              // Get this row's questions
               List<String> thisRowKeys =
                   d.getQuestionAnswers() != null
                       ? new ArrayList<>(d.getQuestionAnswers().keySet())
                       : new ArrayList<>();
 
-              // Q columns for both quiz and survey
               for (int i = 0; i < questionKeys.size(); i++) {
                 if (i < thisRowKeys.size()) {
                   String questionKey = thisRowKeys.get(i);
@@ -351,7 +342,6 @@ public class ParticipationExcelService {
 
                     row.createCell(col++).setCellValue(obtainedMarks);
                   } else {
-                    // Survey - show question title in Q column
                     row.createCell(col++).setCellValue(questionKey);
                   }
                 } else {
@@ -359,7 +349,6 @@ public class ParticipationExcelService {
                 }
               }
 
-              // Selected Answer columns for survey only
               if (isSurveySheet) {
                 for (int i = 0; i < questionKeys.size(); i++) {
                   if (i < thisRowKeys.size()) {
@@ -375,49 +364,46 @@ public class ParticipationExcelService {
                 }
               }
 
-              // Add 3 empty columns
               for (int i = 0; i < 3; i++) {
                 row.createCell(col++).setCellValue("");
               }
 
-              // Leave Q No and Question empty for data rows
+              row.createCell(col++).setCellValue("");
               row.createCell(col++).setCellValue("");
               row.createCell(col++).setCellValue("");
             }
 
-            // Add question reference rows AFTER all data rows
+            // Add question reference rows
             for (int i = 0; i < questionKeys.size(); i++) {
               Row refRow = quizSheet.createRow(rowIdx++);
               int col = 0;
 
-              // Leave all main columns empty
               for (int j = 0; j < firstEmptyCol; j++) {
                 refRow.createCell(col++).setCellValue("");
               }
 
-              // Add 3 empty columns
               for (int j = 0; j < 3; j++) {
                 refRow.createCell(col++).setCellValue("");
               }
 
-              // Add Q No and Question
               refRow.createCell(col++).setCellValue("Q" + (i + 1));
               refRow.createCell(col++).setCellValue(questionKeys.get(i));
+              refRow
+                  .createCell(col++)
+                  .setCellValue(questionArabicTitles.getOrDefault(questionKeys.get(i), ""));
             }
 
-            // Auto-size all columns except the empty ones
             for (int i = 0; i < firstEmptyCol; i++) {
               quizSheet.autoSizeColumn(i);
             }
 
-            // Set fixed width for 3 empty columns
             for (int i = firstEmptyCol; i < firstEmptyCol + 3; i++) {
               quizSheet.setColumnWidth(i, 3000);
             }
 
-            // Auto-size the Q No and Question columns
             quizSheet.autoSizeColumn(firstEmptyCol + 3);
             quizSheet.autoSizeColumn(firstEmptyCol + 4);
+            quizSheet.autoSizeColumn(firstEmptyCol + 5);
           }
         }
 
@@ -479,17 +465,15 @@ public class ParticipationExcelService {
             header.createCell(hCol++).setCellValue("Q" + (i + 1) + "/" + marks);
           }
 
-          // Remember the column index of first empty column
           int firstEmptyCol = hCol;
 
-          // Add 3 empty columns before Question Reference
           for (int i = 0; i < 3; i++) {
             header.createCell(hCol++).setCellValue("");
           }
 
-          // Question Reference header - two columns
           header.createCell(hCol++).setCellValue("Q No");
           header.createCell(hCol++).setCellValue("Question");
+          header.createCell(hCol++).setCellValue("Arabic Question");
 
           int totalCols = hCol;
 
@@ -573,17 +557,16 @@ public class ParticipationExcelService {
               row.createCell(col++).setCellValue(marks);
             }
 
-            // Add 3 empty columns
             for (int i = 0; i < 3; i++) {
               row.createCell(col++).setCellValue("");
             }
 
-            // Empty Q No and Question for data rows
+            row.createCell(col++).setCellValue("");
             row.createCell(col++).setCellValue("");
             row.createCell(col++).setCellValue("");
           }
 
-          // Add question reference rows after all data
+          // Add question reference rows
           for (int i = 0; i < questionList.size(); i++) {
             Row refRow = sheet.createRow(rowIdx++);
             int col = 0;
@@ -598,6 +581,7 @@ public class ParticipationExcelService {
 
             refRow.createCell(col++).setCellValue("Q" + (i + 1));
             refRow.createCell(col++).setCellValue(questionList.get(i));
+            refRow.createCell(col++).setCellValue("");
           }
 
           for (int i = 0; i < firstEmptyCol; i++) {
@@ -610,6 +594,7 @@ public class ParticipationExcelService {
 
           sheet.autoSizeColumn(firstEmptyCol + 3);
           sheet.autoSizeColumn(firstEmptyCol + 4);
+          sheet.autoSizeColumn(firstEmptyCol + 5);
         }
         // ---------------------------------------------------------------
         // SURVEY mode
@@ -654,27 +639,23 @@ public class ParticipationExcelService {
           header.createCell(hCol++).setCellValue("Participated");
           header.createCell(hCol++).setCellValue("Result");
 
-          // Q columns
           for (int i = 0; i < questionList.size(); i++) {
             header.createCell(hCol++).setCellValue("Q" + (i + 1));
           }
 
-          // Selected Answer columns
           for (int i = 0; i < questionList.size(); i++) {
             header.createCell(hCol++).setCellValue("Selected Answer " + (i + 1));
           }
 
-          // Remember the column index of first empty column
           int firstEmptyCol = hCol;
 
-          // Add 3 empty columns before Question Reference
           for (int i = 0; i < 3; i++) {
             header.createCell(hCol++).setCellValue("");
           }
 
-          // Question Reference header - two columns
           header.createCell(hCol++).setCellValue("Q No");
           header.createCell(hCol++).setCellValue("Question");
+          header.createCell(hCol++).setCellValue("Arabic Question");
 
           int totalCols = hCol;
 
@@ -724,12 +705,10 @@ public class ParticipationExcelService {
 
             row.createCell(col++).setCellValue(first.getResult() != null ? first.getResult() : "");
 
-            // Q columns - show question titles
             for (String q : questionList) {
               row.createCell(col++).setCellValue(q);
             }
 
-            // Selected Answers - show agent answers
             for (String q : questionList) {
               ParticipationStatusDTO qRow = byQuestion.get(q);
               String ans =
@@ -737,17 +716,16 @@ public class ParticipationExcelService {
               row.createCell(col++).setCellValue(ans);
             }
 
-            // Add 3 empty columns
             for (int i = 0; i < 3; i++) {
               row.createCell(col++).setCellValue("");
             }
 
-            // Leave Q No and Question empty for data rows
+            row.createCell(col++).setCellValue("");
             row.createCell(col++).setCellValue("");
             row.createCell(col++).setCellValue("");
           }
 
-          // Add question reference rows after all data
+          // Add question reference rows
           for (int i = 0; i < questionList.size(); i++) {
             Row refRow = sheet.createRow(rowIdx++);
             int col = 0;
@@ -762,6 +740,7 @@ public class ParticipationExcelService {
 
             refRow.createCell(col++).setCellValue("Q" + (i + 1));
             refRow.createCell(col++).setCellValue(questionList.get(i));
+            refRow.createCell(col++).setCellValue("");
           }
 
           for (int i = 0; i < firstEmptyCol; i++) {
@@ -774,6 +753,7 @@ public class ParticipationExcelService {
 
           sheet.autoSizeColumn(firstEmptyCol + 3);
           sheet.autoSizeColumn(firstEmptyCol + 4);
+          sheet.autoSizeColumn(firstEmptyCol + 5);
         }
         workbook.write(out);
         return new ByteArrayInputStream(out.toByteArray());
