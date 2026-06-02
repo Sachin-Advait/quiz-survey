@@ -195,6 +195,8 @@ public class ParticipationExcelService {
               logger.warn("No question data available for quiz/survey: {}", sheetTitle);
             }
 
+            int totalQuestions = questionKeys.size();
+
             // Build header row
             Row header = quizSheet.createRow(0);
             int hCol = 0;
@@ -231,7 +233,7 @@ public class ParticipationExcelService {
               header.createCell(hCol++).setCellValue("Result");
             }
 
-            for (int i = 0; i < questionKeys.size(); i++) {
+            for (int i = 0; i < totalQuestions; i++) {
               if (!isSurveySheet) {
                 Integer marks = questionMarks.getOrDefault(questionKeys.get(i), 0);
                 header.createCell(hCol++).setCellValue("Q" + (i + 1) + "/" + marks);
@@ -241,7 +243,7 @@ public class ParticipationExcelService {
             }
 
             if (isSurveySheet) {
-              for (int i = 0; i < questionKeys.size(); i++) {
+              for (int i = 0; i < totalQuestions; i++) {
                 header.createCell(hCol++).setCellValue("Selected Answer " + (i + 1));
               }
             }
@@ -259,6 +261,9 @@ public class ParticipationExcelService {
             int totalCols = hCol;
 
             int rowIdx = 1;
+            int questionRefCounter = 0;
+
+            // Write data rows with question reference
             for (OverallParticipationDTO d : quizData) {
               Row row = quizSheet.createRow(rowIdx++);
               int col = 0;
@@ -318,7 +323,7 @@ public class ParticipationExcelService {
                       ? new ArrayList<>(d.getQuestionAnswers().keySet())
                       : new ArrayList<>();
 
-              for (int i = 0; i < questionKeys.size(); i++) {
+              for (int i = 0; i < totalQuestions; i++) {
                 if (i < thisRowKeys.size()) {
                   String questionKey = thisRowKeys.get(i);
                   if (!isSurveySheet) {
@@ -350,7 +355,7 @@ public class ParticipationExcelService {
               }
 
               if (isSurveySheet) {
-                for (int i = 0; i < questionKeys.size(); i++) {
+                for (int i = 0; i < totalQuestions; i++) {
                   if (i < thisRowKeys.size()) {
                     String questionKey = thisRowKeys.get(i);
                     String userAnswer =
@@ -368,29 +373,42 @@ public class ParticipationExcelService {
                 row.createCell(col++).setCellValue("");
               }
 
-              row.createCell(col++).setCellValue("");
-              row.createCell(col++).setCellValue("");
-              row.createCell(col++).setCellValue("");
+              // Question Reference - only first N rows get question data
+              if (questionRefCounter < totalQuestions) {
+                row.createCell(col++).setCellValue("Q" + (questionRefCounter + 1));
+                row.createCell(col++).setCellValue(questionKeys.get(questionRefCounter));
+                row.createCell(col++)
+                    .setCellValue(
+                        questionArabicTitles.getOrDefault(
+                            questionKeys.get(questionRefCounter), ""));
+                questionRefCounter++;
+              } else {
+                row.createCell(col++).setCellValue("");
+                row.createCell(col++).setCellValue("");
+                row.createCell(col++).setCellValue("");
+              }
             }
 
-            // Add question reference rows
-            for (int i = 0; i < questionKeys.size(); i++) {
-              Row refRow = quizSheet.createRow(rowIdx++);
+            // If fewer data rows than questions, add extra rows for remaining questions
+            while (questionRefCounter < totalQuestions) {
+              Row extraRow = quizSheet.createRow(rowIdx++);
               int col = 0;
 
               for (int j = 0; j < firstEmptyCol; j++) {
-                refRow.createCell(col++).setCellValue("");
+                extraRow.createCell(col++).setCellValue("");
               }
 
               for (int j = 0; j < 3; j++) {
-                refRow.createCell(col++).setCellValue("");
+                extraRow.createCell(col++).setCellValue("");
               }
 
-              refRow.createCell(col++).setCellValue("Q" + (i + 1));
-              refRow.createCell(col++).setCellValue(questionKeys.get(i));
-              refRow
+              extraRow.createCell(col++).setCellValue("Q" + (questionRefCounter + 1));
+              extraRow.createCell(col++).setCellValue(questionKeys.get(questionRefCounter));
+              extraRow
                   .createCell(col++)
-                  .setCellValue(questionArabicTitles.getOrDefault(questionKeys.get(i), ""));
+                  .setCellValue(
+                      questionArabicTitles.getOrDefault(questionKeys.get(questionRefCounter), ""));
+              questionRefCounter++;
             }
 
             for (int i = 0; i < firstEmptyCol; i++) {
@@ -415,7 +433,6 @@ public class ParticipationExcelService {
           @SuppressWarnings("unchecked")
           List<ParticipationStatusDTO> data = (List<ParticipationStatusDTO>) list;
 
-          // Collect arabic titles from data
           Map<String, String> arabicTitlesMap = new LinkedHashMap<>();
           for (ParticipationStatusDTO d : data) {
             if (d.getQuestion() != null
@@ -469,7 +486,7 @@ public class ParticipationExcelService {
           header.createCell(hCol++).setCellValue("Percentage");
           header.createCell(hCol++).setCellValue("Result");
 
-          for (int i = 0; i < questionList.size(); i++) {
+          for (int i = 0; i < totalQuestions; i++) {
             String q = questionList.get(i);
             Integer marks = questionMarksMap.getOrDefault(q, 0);
             header.createCell(hCol++).setCellValue("Q" + (i + 1) + "/" + marks);
@@ -488,6 +505,8 @@ public class ParticipationExcelService {
           int totalCols = hCol;
 
           int rowIdx = 1;
+          int questionRefCounter = 0;
+
           for (Map.Entry<String, List<ParticipationStatusDTO>> entry : byUser.entrySet()) {
 
             List<ParticipationStatusDTO> userRows = entry.getValue();
@@ -571,29 +590,40 @@ public class ParticipationExcelService {
               row.createCell(col++).setCellValue("");
             }
 
-            row.createCell(col++).setCellValue("");
-            row.createCell(col++).setCellValue("");
-            row.createCell(col++).setCellValue("");
+            if (questionRefCounter < totalQuestions) {
+              row.createCell(col++).setCellValue("Q" + (questionRefCounter + 1));
+              row.createCell(col++).setCellValue(questionList.get(questionRefCounter));
+              row.createCell(col++)
+                  .setCellValue(
+                      arabicTitlesMap.getOrDefault(questionList.get(questionRefCounter), ""));
+              questionRefCounter++;
+            } else {
+              row.createCell(col++).setCellValue("");
+              row.createCell(col++).setCellValue("");
+              row.createCell(col++).setCellValue("");
+            }
           }
 
-          // Add question reference rows with Arabic titles
-          for (int i = 0; i < questionList.size(); i++) {
-            Row refRow = sheet.createRow(rowIdx++);
+          // If fewer data rows than questions, add extra rows
+          while (questionRefCounter < totalQuestions) {
+            Row extraRow = sheet.createRow(rowIdx++);
             int col = 0;
 
             for (int j = 0; j < firstEmptyCol; j++) {
-              refRow.createCell(col++).setCellValue("");
+              extraRow.createCell(col++).setCellValue("");
             }
 
             for (int j = 0; j < 3; j++) {
-              refRow.createCell(col++).setCellValue("");
+              extraRow.createCell(col++).setCellValue("");
             }
 
-            refRow.createCell(col++).setCellValue("Q" + (i + 1));
-            refRow.createCell(col++).setCellValue(questionList.get(i));
-            refRow
+            extraRow.createCell(col++).setCellValue("Q" + (questionRefCounter + 1));
+            extraRow.createCell(col++).setCellValue(questionList.get(questionRefCounter));
+            extraRow
                 .createCell(col++)
-                .setCellValue(arabicTitlesMap.getOrDefault(questionList.get(i), ""));
+                .setCellValue(
+                    arabicTitlesMap.getOrDefault(questionList.get(questionRefCounter), ""));
+            questionRefCounter++;
           }
 
           for (int i = 0; i < firstEmptyCol; i++) {
@@ -616,7 +646,6 @@ public class ParticipationExcelService {
           @SuppressWarnings("unchecked")
           List<ParticipationStatusDTO> data = (List<ParticipationStatusDTO>) list;
 
-          // Collect arabic titles from data
           Map<String, String> arabicTitlesMap = new LinkedHashMap<>();
           for (ParticipationStatusDTO d : data) {
             if (d.getQuestion() != null
@@ -661,11 +690,11 @@ public class ParticipationExcelService {
           header.createCell(hCol++).setCellValue("Participated");
           header.createCell(hCol++).setCellValue("Result");
 
-          for (int i = 0; i < questionList.size(); i++) {
+          for (int i = 0; i < totalQuestions; i++) {
             header.createCell(hCol++).setCellValue("Q" + (i + 1));
           }
 
-          for (int i = 0; i < questionList.size(); i++) {
+          for (int i = 0; i < totalQuestions; i++) {
             header.createCell(hCol++).setCellValue("Selected Answer " + (i + 1));
           }
 
@@ -682,6 +711,8 @@ public class ParticipationExcelService {
           int totalCols = hCol;
 
           int rowIdx = 1;
+          int questionRefCounter = 0;
+
           for (Map.Entry<String, List<ParticipationStatusDTO>> entry : byUser.entrySet()) {
             List<ParticipationStatusDTO> userRows = entry.getValue();
             ParticipationStatusDTO first = userRows.get(0);
@@ -742,29 +773,40 @@ public class ParticipationExcelService {
               row.createCell(col++).setCellValue("");
             }
 
-            row.createCell(col++).setCellValue("");
-            row.createCell(col++).setCellValue("");
-            row.createCell(col++).setCellValue("");
+            if (questionRefCounter < totalQuestions) {
+              row.createCell(col++).setCellValue("Q" + (questionRefCounter + 1));
+              row.createCell(col++).setCellValue(questionList.get(questionRefCounter));
+              row.createCell(col++)
+                  .setCellValue(
+                      arabicTitlesMap.getOrDefault(questionList.get(questionRefCounter), ""));
+              questionRefCounter++;
+            } else {
+              row.createCell(col++).setCellValue("");
+              row.createCell(col++).setCellValue("");
+              row.createCell(col++).setCellValue("");
+            }
           }
 
-          // Add question reference rows with Arabic titles
-          for (int i = 0; i < questionList.size(); i++) {
-            Row refRow = sheet.createRow(rowIdx++);
+          // If fewer data rows than questions, add extra rows
+          while (questionRefCounter < totalQuestions) {
+            Row extraRow = sheet.createRow(rowIdx++);
             int col = 0;
 
             for (int j = 0; j < firstEmptyCol; j++) {
-              refRow.createCell(col++).setCellValue("");
+              extraRow.createCell(col++).setCellValue("");
             }
 
             for (int j = 0; j < 3; j++) {
-              refRow.createCell(col++).setCellValue("");
+              extraRow.createCell(col++).setCellValue("");
             }
 
-            refRow.createCell(col++).setCellValue("Q" + (i + 1));
-            refRow.createCell(col++).setCellValue(questionList.get(i));
-            refRow
+            extraRow.createCell(col++).setCellValue("Q" + (questionRefCounter + 1));
+            extraRow.createCell(col++).setCellValue(questionList.get(questionRefCounter));
+            extraRow
                 .createCell(col++)
-                .setCellValue(arabicTitlesMap.getOrDefault(questionList.get(i), ""));
+                .setCellValue(
+                    arabicTitlesMap.getOrDefault(questionList.get(questionRefCounter), ""));
+            questionRefCounter++;
           }
 
           for (int i = 0; i < firstEmptyCol; i++) {
