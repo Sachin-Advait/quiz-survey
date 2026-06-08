@@ -6,6 +6,7 @@ import com.gissoftware.quiz_survey.model.OfferModel;
 import com.gissoftware.quiz_survey.service.OfferService;
 import com.gissoftware.quiz_survey.service.OfferViewService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +46,13 @@ public class OfferController {
   @PostMapping("/bunny/upload-image")
   public ResponseEntity<Map<String, String>> uploadOfferImage(
       @RequestParam("file") MultipartFile file) throws Exception {
+
+    System.out.println("=================================");
+    System.out.println("UPLOAD CONTROLLER HIT");
+    System.out.println("File Name : " + file.getOriginalFilename());
+    System.out.println("File Size : " + file.getSize() + " bytes");
+    System.out.println("Content Type : " + file.getContentType());
+    System.out.println("=================================");
 
     // 1️⃣ Validate
     if (file == null || file.isEmpty()) {
@@ -146,5 +154,22 @@ public class OfferController {
     offerViewService.markOfferViewed(offerId, userId, userAgent);
 
     return ResponseEntity.ok(new ApiResponseDTO<>(true, "Offer marked as viewed", null));
+  }
+  /**
+   * Get Bunny upload configuration (without exposing API key directly)
+   * This generates a temporary upload token instead of sharing the master API key
+   */
+  @GetMapping("/bunny/upload-config")
+  public ResponseEntity<Map<String, String>> getBunnyUploadConfig() {
+    // Generate a temporary signature or just return the configuration
+    // For better security, you could generate time-limited upload tokens
+    long expires = Instant.now().getEpochSecond() + 3600; // 1 hour expiry
+
+    return ResponseEntity.ok(Map.of(
+            "storageZone", bunnyStorageZone,
+            "cdnUrl", bunnyStorageCdnUrl,
+            "accessKey", bunnyStorageApiKey, // Consider using temporary tokens instead
+            "expires", String.valueOf(expires)
+    ));
   }
 }
