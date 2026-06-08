@@ -24,7 +24,7 @@ public class OfferReportController {
             true, "All offer view reports fetched", offerReportService.getAllOfferViewReport()));
   }
 
-  @GetMapping("/{offerId}/view-report")
+  @GetMapping("/view-report/{offerId}")
   public ResponseEntity<ApiResponseDTO<List<OfferViewReportDTO>>> getOfferViewReport(
       @PathVariable String offerId) {
 
