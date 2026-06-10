@@ -109,8 +109,21 @@ public class ResponseService {
             .findById(request.getUserId())
             .orElseThrow(() -> new RuntimeException("Invalid userId"));
 
-    quiz.setMaxRetake(quiz.getMaxRetake() - 1);
-    quizSurveyRepo.save(quiz);
+    // ❌ REMOVE THIS - Don't decrement globally
+    // quiz.setMaxRetake(quiz.getMaxRetake() - 1);
+    // quizSurveyRepo.save(quiz);
+
+    // ✅ Count how many times THIS USER has already submitted
+    long userSubmissionCount =
+        responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), request.getUserId()).stream()
+            .filter(r -> r.getScore() != null) // Only count actual submissions (not just opens)
+            .count();
+
+    // ✅ Check if user has exceeded their retake limit
+    if (userSubmissionCount >= quiz.getMaxRetake()) {
+      throw new IllegalStateException(
+          "You have exhausted all " + quiz.getMaxRetake() + " attempts for this quiz.");
+    }
 
     Instant openedAt =
         responseRepo.findByQuizSurveyIdAndUserId(quiz.getId(), request.getUserId()).stream()
@@ -119,8 +132,10 @@ public class ResponseService {
             .filter(java.util.Objects::nonNull)
             .max(Comparator.naturalOrder())
             .orElse(null);
+
     String platform = DeviceDetectorUtil.detectPlatform(userAgent);
     String client = DeviceDetectorUtil.detectClient(userAgent);
+
     return responseRepo.save(
         ResponseModel.builder()
             .quizSurveyId(quiz.getId())
