@@ -8,9 +8,11 @@ import com.gissoftware.quiz_survey.dto.LowScoringUserDTO;
 import com.gissoftware.quiz_survey.dto.ResponseReceivedDTO;
 import com.gissoftware.quiz_survey.dto.SurveySubmissionRequest;
 import com.gissoftware.quiz_survey.dto.UserResponseDTO;
+import com.gissoftware.quiz_survey.model.AttemptStatus;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.UserModel;
+import com.gissoftware.quiz_survey.repository.QuizAttemptRepository;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
@@ -35,6 +37,7 @@ public class ResponseService {
   private final QuizSurveyRepository quizSurveyRepo;
   private final ResponseRepo responseRepo;
   private final UserRepository userRepository;
+  private final QuizAttemptRepository attemptRepo;
 
   private final MongoTemplate mongoTemplate;
 
@@ -73,11 +76,22 @@ public class ResponseService {
     }
 
     // Handle response
-    return switch (qs.getType().toLowerCase()) {
-      case "survey" -> handleSurveyResponse(qs, request, userAgent);
-      case "quiz" -> handleQuizResponse(qs, request, userAgent);
-      default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
-    };
+    ResponseModel savedResponse =
+        switch (qs.getType().toLowerCase()) {
+          case "survey" -> handleSurveyResponse(qs, request, userAgent);
+          case "quiz" -> handleQuizResponse(qs, request, userAgent);
+          default -> throw new IllegalArgumentException("Unsupported type: " + qs.getType());
+        };
+
+    attemptRepo.findByQuizSurveyIdAndUserId(quizSurveyId, request.getUserId()).stream()
+        .filter(attempt -> attempt.isInProgress())
+        .findFirst()
+        .ifPresent(
+            attempt -> {
+              attempt.setStatus(AttemptStatus.SUBMITTED);
+              attemptRepo.save(attempt);
+            });
+    return savedResponse;
   }
 
   private ResponseModel handleQuizResponse(

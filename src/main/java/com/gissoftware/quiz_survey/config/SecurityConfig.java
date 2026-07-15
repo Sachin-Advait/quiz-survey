@@ -23,8 +23,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableScheduling
 public class SecurityConfig {
 
-  @Autowired
-  private KongAuthFilter kongAuthFilter;
+  //  @Autowired
+  //  private KongAuthFilter kongAuthFilter;
 
   //   Register filters as Spring Beans
   @Bean
@@ -42,12 +42,13 @@ public class SecurityConfig {
     return new HostValidationFilter();
   }
 
-  @Bean
-  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter filter) {
-    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
-    registration.setEnabled(false);
-    return registration;
-  }
+  //  @Bean
+  //  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter
+  // filter) {
+  //    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
+  //    registration.setEnabled(false);
+  //    return registration;
+  //  }
 
   @Bean
   public SecurityFilterChain filterChain(
@@ -70,15 +71,15 @@ public class SecurityConfig {
                     .requestMatchers("/api/user/ws/**")
                     .permitAll()
                     .requestMatchers("/api/user/**")
-                    .authenticated()
+                    .permitAll()
                     .requestMatchers("/api/admin/**")
-                    .authenticated()
+                    .permitAll()
                     .anyRequest()
                     .denyAll())
         .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
         .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
         .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+        //        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 
