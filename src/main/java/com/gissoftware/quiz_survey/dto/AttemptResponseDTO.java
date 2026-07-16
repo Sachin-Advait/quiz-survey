@@ -16,11 +16,12 @@ public class AttemptResponseDTO {
   private Instant startTime;
   private Instant endTime;
   private Integer durationMinutes;
-  private Long remainingSeconds;
+  private Integer remainingSeconds;
   private Map<String, Object> answers;
   private Integer currentPageNo;
   private Integer attemptNumber;
 
   // For completed
   private Instant submittedAt;
+  private Integer timeSpent;
 }

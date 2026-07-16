@@ -59,6 +59,7 @@ public class QuizAttempt {
   @CreatedDate private Instant createdAt;
 
   @LastModifiedDate private Instant updatedAt;
+  private Integer timeSpent;
 
   // Helper methods
   public boolean isExpired() {

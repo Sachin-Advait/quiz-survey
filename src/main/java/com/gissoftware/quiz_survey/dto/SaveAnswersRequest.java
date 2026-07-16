@@ -5,9 +5,10 @@ import lombok.Data;
 
 @Data
 public class SaveAnswersRequest {
-    private String userId;
-    private Map<String, Object> answers;
-    private Integer currentPageNo;
-    private String platform;
-    private String client;
+  private String userId;
+  private Map<String, Object> answers;
+  private Integer currentPageNo;
+  private String platform;
+  private String client;
+  private Integer timeSpent;
 }

@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.repository;
 
+import com.gissoftware.quiz_survey.model.AttemptStatus;
 import com.gissoftware.quiz_survey.model.QuizAttempt;
 import java.util.List;
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -10,4 +11,5 @@ public interface QuizAttemptRepository extends MongoRepository<QuizAttempt, Stri
 
   List<QuizAttempt> findByQuizSurveyIdAndUserId(String quizSurveyId, String userId);
 
+  List<QuizAttempt> findByStatus(AttemptStatus status);
 }

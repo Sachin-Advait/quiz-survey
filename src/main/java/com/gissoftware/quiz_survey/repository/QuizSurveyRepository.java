@@ -9,18 +9,19 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface QuizSurveyRepository extends MongoRepository<QuizSurveyModel, String> {
-    List<QuizSurveyModel> findByAnnouncementModeAndScheduledTimeBeforeAndIsAnnouncedFalse(
-            AnnouncementMode mode, Instant time);
-    // 🔹 REQUIRED FOR USER SCORE
+  List<QuizSurveyModel> findByAnnouncementModeAndScheduledTimeBeforeAndIsAnnouncedFalse(
+      AnnouncementMode mode, Instant time);
 
-    // Get all quizzes
-    List<QuizSurveyModel> findByTypeIgnoreCase(String type);
+  // 🔹 REQUIRED FOR USER SCORE
 
-    // Get quizzes/surveys targeted to a user
-    List<QuizSurveyModel> findByTargetedUsersContaining(String userId);
+  // Get all quizzes
+  List<QuizSurveyModel> findByTypeIgnoreCase(String type);
 
-    // Get surveys targeted to a user
-    List<QuizSurveyModel> findByTypeIgnoreCaseAndTargetedUsersContaining(
-            String type, String userId
-    );
+  // Get quizzes/surveys targeted to a user
+  List<QuizSurveyModel> findByTargetedUsersContaining(String userId);
+
+  // Get surveys targeted to a user
+  List<QuizSurveyModel> findByTypeIgnoreCaseAndTargetedUsersContaining(String type, String userId);
+
+  List<QuizSurveyModel> findByStatus(Boolean status);
 }
