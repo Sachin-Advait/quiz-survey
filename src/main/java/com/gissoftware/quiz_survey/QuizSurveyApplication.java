@@ -20,6 +20,9 @@ public class QuizSurveyApplication implements ApplicationListener<WebServerIniti
     setSystemProperty("DB_URL", dotenv);
     setSystemProperty("PORT", dotenv);
     setSystemProperty("KONG_SECRET", dotenv);
+    setSystemProperty("POSTGRES_URL", dotenv);
+    setSystemProperty("POSTGRES_USERNAME", dotenv);
+    setSystemProperty("POSTGRES_PASSWORD", dotenv);
 
     SpringApplication.run(QuizSurveyApplication.class, args);
   }
