@@ -87,7 +87,7 @@ public class SecurityConfig {
         .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
         .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
         .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+        //        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 
