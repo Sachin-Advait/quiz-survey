@@ -50,22 +50,23 @@ public class SecurityConfig {
 
   //  @Bean
   //  public SecurityFilterChain filterChain(
-  //      HttpSecurity http, RequestResponseLoggingFilter loggingFilter) throws Exception {
+  //      HttpSecurity http,
+  //      RequestResponseLoggingFilter loggingFilter,
+  //      JwtAuthenticationFilter jwtAuthenticationFilter)
+  //      throws Exception {
   @Bean
   public SecurityFilterChain filterChain(
-      HttpSecurity http,
-      RequestResponseLoggingFilter loggingFilter,
-      JwtAuthenticationFilter jwtAuthenticationFilter)
-      throws Exception {
+      HttpSecurity http, RequestResponseLoggingFilter loggingFilter) throws Exception {
 
     return http.addFilterBefore(
             loggingFilter,
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
                 .class)
-        .addFilterBefore(
-            jwtAuthenticationFilter,
-            org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
-                .class)
+        //        .addFilterBefore(
+        //            jwtAuthenticationFilter,
+        //
+        // org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+        //                .class)
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -87,7 +88,7 @@ public class SecurityConfig {
         .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
         .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
         .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        //        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 
