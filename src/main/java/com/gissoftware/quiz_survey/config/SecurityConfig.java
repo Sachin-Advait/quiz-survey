@@ -2,6 +2,8 @@ package com.gissoftware.quiz_survey.config;
 
 import com.gissoftware.quiz_survey.logging.RequestResponseLoggingFilter;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -21,8 +23,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableScheduling
 public class SecurityConfig {
 
-  //  @Autowired
-  //  private KongAuthFilter kongAuthFilter;
+  @Autowired private KongAuthFilter kongAuthFilter;
 
   //   Register filters as Spring Beans
   @Bean
@@ -40,20 +41,29 @@ public class SecurityConfig {
     return new HostValidationFilter();
   }
 
-  //  @Bean
-  //  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter
-  // filter) {
-  //    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
-  //    registration.setEnabled(false);
-  //    return registration;
-  //  }
+  @Bean
+  public FilterRegistrationBean<KongAuthFilter> kongAuthFilterRegistration(KongAuthFilter filter) {
+    FilterRegistrationBean<KongAuthFilter> registration = new FilterRegistrationBean<>(filter);
+    registration.setEnabled(false);
+    return registration;
+  }
 
+  //  @Bean
+  //  public SecurityFilterChain filterChain(
+  //      HttpSecurity http, RequestResponseLoggingFilter loggingFilter) throws Exception {
   @Bean
   public SecurityFilterChain filterChain(
-      HttpSecurity http, RequestResponseLoggingFilter loggingFilter) throws Exception {
+      HttpSecurity http,
+      RequestResponseLoggingFilter loggingFilter,
+      JwtAuthenticationFilter jwtAuthenticationFilter)
+      throws Exception {
 
     return http.addFilterBefore(
             loggingFilter,
+            org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
+                .class)
+        .addFilterBefore(
+            jwtAuthenticationFilter,
             org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter
                 .class)
         .csrf(AbstractHttpConfigurer::disable)
@@ -69,15 +79,15 @@ public class SecurityConfig {
                     .requestMatchers("/api/user/ws/**")
                     .permitAll()
                     .requestMatchers("/api/user/**")
-                    .permitAll()
+                    .authenticated()
                     .requestMatchers("/api/admin/**")
-                    .permitAll()
+                    .authenticated()
                     .anyRequest()
                     .denyAll())
         .addFilterBefore(securityHeadersFilter(), BasicAuthenticationFilter.class)
         .addFilterBefore(refererValidationFilter(), securityHeadersFilter().getClass())
         .addFilterBefore(hostValidationFilter(), refererValidationFilter().getClass())
-        //        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
+        .addFilterBefore(kongAuthFilter, hostValidationFilter().getClass())
         .build();
   }
 

@@ -399,9 +399,15 @@ public class ResultService {
                       // FIX: answerKey or its value can be null
                       Object ans = answerKey.get(questionId);
                       if (ans instanceof String s) {
-                        correct = choice.equals(s);
+                        correct = normalizeAnswer(choice).equalsIgnoreCase(normalizeAnswer(s));
                       } else if (ans instanceof List<?> list) {
-                        correct = list.contains(choice);
+                        correct =
+                            list.stream()
+                                .filter(Objects::nonNull)
+                                .anyMatch(
+                                    item ->
+                                        normalizeAnswer(choice)
+                                            .equalsIgnoreCase(normalizeAnswer(item.toString())));
                       }
                       return QuizResultDTO.OptionDTO.builder()
                           .text(choice)
@@ -467,5 +473,13 @@ public class ResultService {
       ratings.add((int) Double.parseDouble(value.toString()));
     } catch (NumberFormatException ignored) {
     }
+  }
+
+  private String normalizeAnswer(String value) {
+    if (value == null) {
+      return null;
+    }
+
+    return value.replace('\u00A0', ' ').trim().replaceAll("\\s+", " ");
   }
 }
