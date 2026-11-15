@@ -45,6 +45,15 @@ public class QuizSurveyAdminController {
                 new ApiResponseDTO<>(true, "Quiz & survey updated successfully", updated));
     }
 
+    // Full quiz/survey for the admin edit form (includes targeted users and settings)
+    @GetMapping("/{id}")
+    public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> getQuizSurveyForEdit(
+            @PathVariable String id) {
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Quiz & survey fetched successfully",
+                        quizSurveyService.getById(id)));
+    }
+
     // Edit a published quiz/survey in place; earlier completions stay in the same report
     @PutMapping("/{id}/edit")
     public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> editQuizSurvey(
