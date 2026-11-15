@@ -1,5 +1,6 @@
 package com.gissoftware.quiz_survey.service;
 
+import com.gissoftware.quiz_survey.Utils.ScoringUtil;
 import com.gissoftware.quiz_survey.Utils.UserDataFieldConstants;
 import com.gissoftware.quiz_survey.controller.QuizSurveySseController;
 import com.gissoftware.quiz_survey.dto.PageResponseDTO;
@@ -9,9 +10,11 @@ import com.gissoftware.quiz_survey.dto.QuizzesSurveysDTO;
 import com.gissoftware.quiz_survey.mapper.QuizSurveyMapper;
 import com.gissoftware.quiz_survey.model.AnnouncementMode;
 import com.gissoftware.quiz_survey.model.QuizSurveyModel;
+import com.gissoftware.quiz_survey.model.QuizSurveyVersionModel;
 import com.gissoftware.quiz_survey.model.ResponseModel;
 import com.gissoftware.quiz_survey.model.VisibilityType;
 import com.gissoftware.quiz_survey.repository.QuizSurveyRepository;
+import com.gissoftware.quiz_survey.repository.QuizSurveyVersionRepository;
 import com.gissoftware.quiz_survey.repository.ResponseRepo;
 import com.gissoftware.quiz_survey.repository.UserRepository;
 import java.time.Instant;
@@ -25,6 +28,7 @@ import org.springframework.data.domain.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -39,6 +43,7 @@ public class QuizSurveyService {
   private final FCMService fcmService;
   private final MongoTemplate mongoTemplate;
   private final QuizSurveySseController quizSurveySseController;
+  private final QuizSurveyVersionRepository quizSurveyVersionRepo;
 
   // Get Quiz & Survey By ID
   public QuizSurveyDTO getQuizSurvey(String id, String userId) {
@@ -243,6 +248,7 @@ public class QuizSurveyService {
     }
 
     model.setIsAnnounced(model.getAnnouncementMode() == AnnouncementMode.IMMEDIATE);
+    model.setVersion(1);
     QuizSurveyModel savedQuiz = quizSurveyRepo.save(model);
     quizSurveySseController.pushNewSurvey(savedQuiz);
 
@@ -274,6 +280,133 @@ public class QuizSurveyService {
       existing.setUserDataDisplayFields(model.getUserDataDisplayFields());
 
     return quizSurveyRepo.save(existing);
+  }
+
+  /**
+   * Edit a published quiz/survey in place (same ID), so every earlier completion stays linked to
+   * it and stays in its reports.
+   *
+   * <p>completedUsersPolicy decides what happens to submissions made on the previous version:
+   * KEEP (default) leaves them untouched; RESCORE re-marks quiz answers against the new answer key
+   * and keeps the old score in originalScore.
+   */
+  public QuizSurveyModel editQuizSurvey(
+      String id, QuizSurveyModel model, String completedUsersPolicy) {
+    QuizSurveyModel existing =
+        quizSurveyRepo
+            .findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Quiz/Survey not found"));
+
+    String policy =
+        completedUsersPolicy == null ? "KEEP" : completedUsersPolicy.trim().toUpperCase();
+    if (!policy.equals("KEEP") && !policy.equals("RESCORE")) {
+      throw new IllegalArgumentException("Invalid completedUsersPolicy: " + completedUsersPolicy);
+    }
+    boolean isQuiz = "quiz".equalsIgnoreCase(existing.getType());
+    if (policy.equals("RESCORE") && !isQuiz) {
+      throw new IllegalArgumentException("Re-score is only available for quizzes");
+    }
+
+    int previousVersion = existing.getVersion() != null ? existing.getVersion() : 1;
+    Instant now = Instant.now();
+
+    // 1. Snapshot the questions being replaced
+    quizSurveyVersionRepo.save(
+        QuizSurveyVersionModel.builder()
+            .quizSurveyId(id)
+            .version(previousVersion)
+            .title(existing.getTitle())
+            .definitionJson(existing.getDefinitionJson())
+            .answerKey(existing.getAnswerKey())
+            .maxScore(existing.getMaxScore())
+            .completedUsersPolicy(policy)
+            .replacedAt(now)
+            .build());
+
+    // 2. Tag responses submitted before versioning existed with the version they were taken on
+    mongoTemplate.updateMulti(
+        new Query(Criteria.where("quizSurveyId").is(id).and("quizVersion").exists(false)),
+        new Update().set("quizVersion", previousVersion),
+        ResponseModel.class);
+
+    // 3. Never drop an already-targeted user, so their completion stays in the report
+    List<String> previousTargets = new ArrayList<>(existing.getTargetedUsers());
+    if (model.getTargetedUsers() != null && !model.getTargetedUsers().isEmpty()) {
+      LinkedHashSet<String> merged = new LinkedHashSet<>(previousTargets);
+      merged.addAll(model.getTargetedUsers());
+      model.setTargetedUsers(new ArrayList<>(merged));
+    }
+
+    // 4. Apply the edit to the same document
+    model.setId(id);
+    model.setIsAnnounced(null); // editing never changes announcement state
+    QuizSurveyModel updated = updateQuizSurvey(model);
+    updated.setVersion(previousVersion + 1);
+    updated.setUpdatedAt(now);
+    updated = quizSurveyRepo.save(updated);
+
+    // 5. Re-score earlier quiz submissions if asked
+    List<ResponseModel> submitted =
+        responseRepo.findByQuizSurveyId(id).stream().filter(r -> r.getAnswers() != null).toList();
+
+    if (policy.equals("RESCORE")) {
+      Map<String, String> questionTypes = new HashMap<>();
+      Map<String, Integer> questionMarks = new HashMap<>();
+      if (updated.getDefinitionJson() != null && updated.getDefinitionJson().getPages() != null) {
+        updated
+            .getDefinitionJson()
+            .getPages()
+            .forEach(
+                page -> {
+                  if (page.getElements() == null) return;
+                  page.getElements()
+                      .forEach(
+                          el -> {
+                            questionTypes.put(el.getName(), el.getType());
+                            questionMarks.put(
+                                el.getName(), el.getMarks() != null ? el.getMarks() : 1);
+                          });
+                });
+      }
+      Map<String, Object> answerKey = new HashMap<>();
+      if (updated.getAnswerKey() != null) {
+        // only score questions that still exist
+        updated.getAnswerKey().forEach(
+            (k, v) -> {
+              if (questionMarks.containsKey(k) && v != null) answerKey.put(k, v);
+            });
+      }
+
+      List<ResponseModel> rescored = new ArrayList<>();
+      for (ResponseModel r : submitted) {
+        if (r.getScore() == null) continue;
+        int newScore =
+            ScoringUtil.score(r.getAnswers(), answerKey, questionTypes, questionMarks).score();
+        if (r.getOriginalScore() == null) r.setOriginalScore(r.getScore());
+        r.setScore(newScore);
+        r.setMaxScore(updated.getMaxScore());
+        r.setRescoredAt(now);
+        rescored.add(r);
+      }
+      responseRepo.saveAll(rescored);
+    }
+
+    // 6. Notify only targeted users who have not completed it yet
+    Set<String> completedUserIds =
+        submitted.stream().map(ResponseModel::getUserId).collect(Collectors.toSet());
+    List<String> pendingUsers =
+        updated.getTargetedUsers().stream().filter(u -> !completedUserIds.contains(u)).toList();
+    if (!pendingUsers.isEmpty()) {
+      fcmService.notifyQuizSurveyAssigned(
+          QuizSurveyModel.builder()
+              .id(updated.getId())
+              .type(updated.getType())
+              .title(updated.getTitle())
+              .targetedUsers(pendingUsers)
+              .build());
+    }
+
+    return updated;
   }
 
   // Delete Quiz & Survey by ID

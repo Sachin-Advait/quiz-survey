@@ -45,6 +45,18 @@ public class QuizSurveyAdminController {
                 new ApiResponseDTO<>(true, "Quiz & survey updated successfully", updated));
     }
 
+    // Edit a published quiz/survey in place; earlier completions stay in the same report
+    @PutMapping("/{id}/edit")
+    public ResponseEntity<ApiResponseDTO<QuizSurveyModel>> editQuizSurvey(
+            @PathVariable String id,
+            @RequestParam(defaultValue = "KEEP") String completedUsersPolicy,
+            @RequestBody QuizSurveyModel updatedModel) {
+        QuizSurveyModel updated =
+                quizSurveyService.editQuizSurvey(id, updatedModel, completedUsersPolicy);
+        return ResponseEntity.ok(
+                new ApiResponseDTO<>(true, "Quiz & survey edited successfully", updated));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponseDTO<Void>> deleteQuizSurvey(@PathVariable String id) {
         quizSurveyService.deleteQuizSurvey(id);

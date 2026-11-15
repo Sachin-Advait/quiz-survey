@@ -46,4 +46,8 @@ public class QuizSurveyModel {
 
     @CreatedDate
     private Instant createdAt;
+
+    // Content version: starts at 1 and goes up each time the quiz is edited in place.
+    private Integer version;
+    private Instant updatedAt;
 }
