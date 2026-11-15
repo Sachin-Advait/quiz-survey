@@ -153,6 +153,7 @@ public class ResponseService {
     return responseRepo.save(
         ResponseModel.builder()
             .quizSurveyId(quiz.getId())
+            .quizVersion(quiz.getVersion() != null ? quiz.getVersion() : 1)
             .userId(request.getUserId())
             .username(user.getUsername())
             .answers(request.getAnswers())
@@ -187,6 +188,7 @@ public class ResponseService {
     return responseRepo.save(
         ResponseModel.builder()
             .quizSurveyId(survey.getId())
+            .quizVersion(survey.getVersion() != null ? survey.getVersion() : 1)
             .userId(request.getUserId())
             .username(user.getUsername())
             .answers(request.getAnswers())

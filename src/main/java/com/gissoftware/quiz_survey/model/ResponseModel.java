@@ -33,4 +33,8 @@ public class ResponseModel {
   @CreatedDate private Instant submittedAt;
   private String platform; // WEB or MOBILE
   private String client; // Chrome, Edge, Android, iOS, Safari etc.
+
+  private Integer quizVersion; // quiz version this response was submitted on
+  private Integer originalScore; // score before a re-score, kept for audit
+  private Instant rescoredAt;
 }
